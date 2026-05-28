@@ -1,0 +1,3 @@
+INSERT INTO gallery (id, name, filename, type, size, path) VALUES
+('1767674525163', 'uin-alauddin-makassar-terakreditasi-unggul-0424 (1).jpeg', '1767674525158-uin-alauddin-makassar-terakreditasi-unggul-0424 (1).jpeg', 'image/jpeg', 162473, '1767674525158-uin-alauddin-makassar-terakreditasi-unggul-0424 (1).jpeg'),
+('1767794134400', 'vecteezy_flower-and-mountain-landscape-background_11457898.jpg', '1767794134376-vecteezy_flower-and-mountain-landscape-background_11457898.jpg', 'image/jpeg', 506840, '1767794134376-vecteezy_flower-and-mountain-landscape-background_11457898.jpg');

@@ -1,0 +1,699 @@
+<!doctype html>
+<html lang="id">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Panel Mentor - Islamic Education Management</title>
+  <link rel="shortcut icon" href="/img/1.png" type="image/x-icon" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap"
+    rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/mentor-style.css" />
+  <script>
+    // STRICT LOGIN CHECK
+    if (!localStorage.getItem("loggedIn") || localStorage.getItem("userRole") !== "mentor") {
+      window.location.replace("login.html");
+    }
+
+    // FORCE LIGHT THEME
+    document.documentElement.setAttribute('data-theme', 'light');
+    localStorage.setItem('theme', 'light');
+  </script>
+</head>
+
+<body>
+  <!-- Mobile Sidebar Toggler -->
+  <button class="sidebar-toggler" onclick="toggleSidebar()">
+    <i class="fas fa-bars"></i>
+  </button>
+
+  <!-- Sidebar Premium Layout -->
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <h4><i class="fas fa-graduation-cap"></i> Lab MPI</h4>
+    </div>
+
+    <div class="sidebar-profile">
+      <img src="/img/1.png" alt="Profile Pic" id="sidebar-profile-pic" class="sidebar-profile-img" />
+      <h5 id="sidebar-username">Mentor</h5>
+      <small id="sidebar-role">Mentor Pengajar</small>
+    </div>
+
+    <nav class="nav flex-column">
+      <a class="nav-link active" href="#dashboard"><i class="fas fa-th-large"></i> Dashboard</a>
+      <a class="nav-link" href="#submissions"><i class="fas fa-tasks"></i> Tugas Mahasiswa</a>
+      <a class="nav-link" href="#calendar-sec"><i class="fas fa-calendar-alt"></i> Kalender & Jadwal</a>
+      <a class="nav-link" href="#attendance"><i class="fas fa-user-check"></i> Absensi Kelas</a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <button class="logout-btn" onclick="logout(event)">
+        <i class="fas fa-sign-out-alt"></i> Keluar Sesi
+      </button>
+    </div>
+  </div>
+
+  <!-- Main View Area -->
+  <div class="main-content" id="main-content">
+
+    <!-- DASHBOARD SECTION -->
+    <div id="dashboard" class="section active">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+          <h2 class="page-title">Dashboard Mentor</h2>
+        </div>
+      </div>
+
+      <!-- Welcome Banner glassmorphic -->
+      <div class="glass-card mb-4 p-4 text-white position-relative overflow-hidden"
+        style="background: linear-gradient(135deg, #e40fef 0%, #4338ca 100%); border: none;">
+        <div class="position-relative z-3">
+          <h3 id="welcome-mentor" class="fw-bold mb-2">Selamat datang, Mentor</h3>
+          <p class="mb-0 text-white-50">Di panel ini, Anda dapat memantau tugas yang dikirim oleh mahasiswa, mengatur
+            jadwal mengajar, dan membagikan skor penilaian beserta masukan belajar.</p>
+        </div>
+        <div class="position-absolute end-0 bottom-0 opacity-10"
+          style="font-size: 8rem; transform: translate(20px, 30px);"><i class="fas fa-chalkboard-teacher"></i></div>
+      </div>
+
+      <!-- Stats Summary row -->
+      <div class="row g-4 mb-4">
+        <div class="col-md-3">
+          <div class="stat-card-premium p-4 d-flex align-items-center justify-content-between">
+            <div>
+              <span class="stat-category">Mahasiswa Aktif</span>
+              <h2 class="stat-value" id="stat-students">0</h2>
+              <small class="text-muted">Terdaftar di kelas</small>
+            </div>
+            <div class="stat-icon-wrapper theme-purple">
+              <i class="fas fa-user-friends"></i>
+            </div>
+            <div class="stat-card-glow"></div>
+          </div>
+        </div>
+
+        <div class="col-md-3">
+          <div class="stat-card-premium p-4 d-flex align-items-center justify-content-between">
+            <div>
+              <span class="stat-category">Total Tugas</span>
+              <h2 class="stat-value" id="stat-assignments">0</h2>
+              <small class="text-muted">Tugas terkumpul</small>
+            </div>
+            <div class="stat-icon-wrapper theme-blue">
+              <i class="fas fa-file-upload"></i>
+            </div>
+            <div class="stat-card-glow"></div>
+          </div>
+        </div>
+
+        <div class="col-md-3">
+          <div class="stat-card-premium p-4 d-flex align-items-center justify-content-between">
+            <div>
+              <span class="stat-category">Telah Dinilai</span>
+              <h2 class="stat-value" id="stat-graded">0</h2>
+              <small class="text-muted">Skor diberikan</small>
+            </div>
+            <div class="stat-icon-wrapper theme-green">
+              <i class="fas fa-check-double"></i>
+            </div>
+            <div class="stat-card-glow"></div>
+          </div>
+        </div>
+
+        <div class="col-md-3">
+          <div class="stat-card-premium p-4 d-flex align-items-center justify-content-between">
+            <div>
+              <span class="stat-category">Belum Dinilai</span>
+              <h2 class="stat-value" id="stat-pending">0</h2>
+              <small class="text-muted">Menunggu ulasan</small>
+            </div>
+            <div class="stat-icon-wrapper theme-orange">
+              <i class="fas fa-hourglass-half"></i>
+            </div>
+            <div class="stat-card-glow"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Live countdown and quick info row -->
+      <div class="row g-4">
+        <!-- Upcoming schedule & live countdown -->
+        <div class="col-lg-5">
+          <div class="countdown-card">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <span class="fw-bold text-white-50 uppercase small letter-spacing-1"><i
+                  class="far fa-calendar-alt me-1"></i> Jadwal Mengajar</span>
+              <div id="class-status-indicator" class="status-indicator inactive">
+                <span class="pulse-dot"></span> Sesi Mendatang
+              </div>
+            </div>
+
+            <h4 id="schedule-day-time" class="fw-bold text-white mb-2">Memuat jadwal...</h4>
+            <p class="text-white-50 small mb-4">Pastikan Anda bersiap sebelum sesi mengajar dimulai untuk membagikan
+              materi dan menyapa mahasiswa.</p>
+
+            <hr style="border-color: rgba(255, 255, 255, 0.1); margin: 1.5rem 0;" />
+
+            <span class="text-white-50 small fw-semibold d-block"><i class="fas fa-stopwatch me-1"></i> HITUNG MUNDUR
+              SESI:</span>
+            <div id="countdown-timer" class="d-flex justify-content-center">
+              <!-- Dynamically loaded countdown units -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Quick Submissions Preview -->
+        <div class="col-lg-7">
+          <div class="table-wrapper h-100">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+              <h5 class="fw-bold m-0"><i class="fas fa-envelope-open-text text-primary me-2"></i> Pengumpulan Terbaru
+              </h5>
+              <a href="#submissions" class="btn btn-outline-premium btn-sm rounded-pill py-1"
+                onclick="document.querySelector('a[href=\'#submissions\']').click()">Lihat Semua</a>
+            </div>
+
+            <div class="table-responsive">
+              <table class="table table-custom align-middle">
+                <thead>
+                  <tr>
+                    <th>Mahasiswa</th>
+                    <th>Judul Tugas</th>
+                    <th>Status</th>
+                    <th>Aksi</th>
+                  </tr>
+                </thead>
+                <tbody id="assignments-table-body">
+                  <!-- Dynamically populated rows -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FULL SUBMISSIONS SECTION -->
+    <div id="submissions" class="section">
+      <div class="mb-4">
+        <h2 class="page-title">Tugas Mahasiswa</h2>
+        <p class="text-muted">Berikut adalah daftar lengkap tugas mahasiswa yang telah dikumpulkan. Anda dapat mengunduh
+          file tugas dan memberikan evaluasi nilai serta feedback.</p>
+      </div>
+
+      <div class="table-wrapper">
+        <div class="table-responsive">
+          <table class="table table-custom table-hover align-middle">
+            <thead>
+              <tr>
+                <th style="width: 5%">No</th>
+                <th style="width: 25%">Mahasiswa</th>
+                <th style="width: 25%">Judul Tugas</th>
+                <th style="width: 15%">Tanggal Unggah</th>
+                <th style="width: 15%">Evaluasi Nilai</th>
+                <th style="width: 15%">Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="full-assignments-table-body">
+              <!-- Handled in JS by updating this table too -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- CALENDAR & FULL SCHEDULE SECTION -->
+    <div id="calendar-sec" class="section">
+      <div class="mb-4">
+        <h2 class="page-title">Kalender & Jadwal</h2>
+        <p class="text-muted">Pantau aktivitas mengajar Anda secara periodik dengan kalender interaktif bulanan dan
+          detail jadwal kelas terintegrasi.</p>
+      </div>
+
+      <div class="row g-4">
+        <div class="col-lg-7">
+          <div class="custom-calendar-container">
+            <div class="calendar-header">
+              <h5 id="calendar-month-year">Mei 2026</h5>
+              <div class="d-flex gap-2">
+                <div class="calendar-btn-nav" id="calendar-prev"><i class="fas fa-chevron-left"></i></div>
+                <div class="calendar-btn-nav" id="calendar-next"><i class="fas fa-chevron-right"></i></div>
+              </div>
+            </div>
+
+            <div class="calendar-weekdays">
+              <div>Min</div>
+              <div>Sen</div>
+              <div>Sel</div>
+              <div>Rab</div>
+              <div>Kam</div>
+              <div>Jum</div>
+              <div>Sab</div>
+            </div>
+
+            <div class="calendar-days" id="calendar-days-grid">
+              <!-- Dynamically populated dates -->
+            </div>
+          </div>
+        </div>
+
+        <div class="col-lg-5">
+          <div class="glass-card p-4 h-100">
+            <h5 class="fw-bold mb-3 text-primary"><i class="fas fa-info-circle me-1"></i> Informasi & Agenda</h5>
+            <p class="text-muted small mb-4">Hari yang disorot dengan **lingkaran menyala** di kalender adalah hari
+              aktif mengajar kelas Anda minggu ini.</p>
+
+            <div class="d-flex gap-3 align-items-start mb-3">
+              <div class="bg-primary-subtle text-primary rounded-3 p-3 text-center" style="min-width: 60px;">
+                <i class="fas fa-chalkboard-teacher fa-lg"></i>
+              </div>
+              <div>
+                <h6 class="fw-bold mb-1">Membagikan Materi Kuliah</h6>
+                <small class="text-muted d-block">Anda dapat mengunggah file materi presentasi, PDF, atau link dokumen
+                  melalui modul bahan ajar admin agar mahasiswa dapat mengunduhnya.</small>
+              </div>
+            </div>
+
+            <div class="d-flex gap-3 align-items-start">
+              <div class="bg-success-subtle text-success rounded-3 p-3 text-center" style="min-width: 60px;">
+                <i class="fas fa-star fa-lg"></i>
+              </div>
+              <div>
+                <h6 class="fw-bold mb-1">Sistem Penilaian Terbuka</h6>
+                <small class="text-muted d-block">Skor nilai yang Anda berikan (skala 0 - 100) serta masukan belajar
+                  akan langsung dapat dilihat secara instan oleh mahasiswa bersangkutan pada halaman kelas
+                  mereka.</small>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ROW 2: Class & Schedule Proposal Panel (FUTURISTIK) -->
+      <div class="row g-4 mt-4">
+        <!-- Form Pengajuan -->
+        <div class="col-lg-6">
+          <div class="glass-card p-4 h-100">
+            <h5 class="fw-bold mb-4 text-primary"><i class="fas fa-plus-circle me-2"></i> Usulkan Kelas & Jadwal Baru
+            </h5>
+            <form id="mentor-add-course-form">
+              <div class="mb-3">
+                <label class="form-label text-muted fw-semibold small" for="mentor-course-name"><i
+                    class="fas fa-book-open text-primary me-1"></i> Nama Kelas</label>
+                <input type="text" class="form-control" id="mentor-course-name"
+                  placeholder="Contoh: Naskah Karya Tulis Ilmiah B" required
+                  style="border-radius: 12px; padding: 0.75rem 1rem;">
+              </div>
+              <div class="mb-3">
+                <label class="form-label text-muted fw-semibold small" for="mentor-course-date"><i
+                    class="far fa-calendar-alt text-primary me-1"></i> Tanggal Perkuliahan</label>
+                <input type="date" class="form-control bg-light border-0 shadow-sm" id="mentor-course-date" required
+                  style="border-radius: 12px; padding: 0.75rem 1rem; cursor: pointer; border: 1px solid #e2e8f0;">
+              </div>
+              <div class="mb-3">
+                <label class="form-label text-muted fw-semibold small"><i class="far fa-clock text-primary me-1"></i>
+                  Jam Kuliah</label>
+                <div class="d-flex align-items-center gap-2">
+                  <input type="time" class="form-control bg-light border-0 shadow-sm" id="mentor-course-time-start"
+                    required
+                    style="border-radius: 12px; padding: 0.75rem 1rem; cursor: pointer; border: 1px solid #e2e8f0;">
+                  <span class="text-muted fw-bold small text-uppercase">s/d</span>
+                  <input type="time" class="form-control bg-light border-0 shadow-sm" id="mentor-course-time-end"
+                    required
+                    style="border-radius: 12px; padding: 0.75rem 1rem; cursor: pointer; border: 1px solid #e2e8f0;">
+                </div>
+              </div>
+              <div class="mb-4">
+                <label class="form-label text-muted fw-semibold small" for="mentor-course-desc"><i
+                    class="fas fa-align-left text-primary me-1"></i> Deskripsi Singkat</label>
+                <textarea class="form-control" id="mentor-course-desc" rows="3"
+                  placeholder="Tuliskan deskripsi singkat mengenai kelas yang diusulkan"
+                  style="border-radius: 12px; padding: 0.75rem 1rem; border: 1px solid #e2e8f0; background: #fff;"></textarea>
+              </div>
+
+              <!-- RENCANA ABSENSI & TUGAS OTOMATIS -->
+              <div class="border-top pt-3 mt-4 mb-4">
+                <h6 class="fw-bold text-white mb-3"><i class="fas fa-magic text-primary me-2"></i> Rancangan Absensi & Tugas Otomatis</h6>
+                
+                <div class="row g-3">
+                  <div class="col-md-12">
+                    <div class="card p-3 border-0 shadow-sm" style="border-radius: 12px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.1) !important;">
+                      <div class="form-check form-switch mb-2">
+                        <input class="form-check-input" type="checkbox" id="mentor-course-auto-attn" checked>
+                        <label class="form-check-label fw-semibold text-white small" for="mentor-course-auto-attn">Aktifkan Absensi Otomatis</label>
+                      </div>
+                      <div id="mentor-course-attn-settings" class="mt-2">
+                        <label class="form-label text-white-50 fw-semibold small" for="mentor-course-attn-late"><i class="fas fa-user-clock text-primary me-1"></i> Batas Keterlambatan (Menit)</label>
+                        <input type="number" class="form-control" id="mentor-course-attn-late" value="15" min="5" max="180" style="border-radius: 8px; padding: 0.5rem 0.75rem; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.05); color: #fff;">
+                      </div>
+                    </div>
+                  </div>
+                  <div class="col-md-12">
+                    <div class="card p-3 border-0 shadow-sm" style="border-radius: 12px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.1) !important;">
+                      <div class="form-check form-switch mb-2">
+                        <input class="form-check-input" type="checkbox" id="mentor-course-auto-task" checked>
+                        <label class="form-check-label fw-semibold text-white small" for="mentor-course-auto-task">Aktifkan Tugas Otomatis</label>
+                      </div>
+                      <div id="mentor-course-task-settings" class="mt-2">
+                        <div class="mb-2">
+                          <label class="form-label text-white-50 fw-semibold small" for="mentor-course-task-title"><i class="fas fa-tasks text-primary me-1"></i> Judul Tugas</label>
+                          <input type="text" class="form-control" id="mentor-course-task-title" placeholder="Contoh: Tugas Mandiri Pertemuan" style="border-radius: 8px; padding: 0.5rem 0.75rem; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.05); color: #fff;">
+                        </div>
+                        <div>
+                          <label class="form-label text-white-50 fw-semibold small" for="mentor-course-task-desc"><i class="fas fa-edit text-primary me-1"></i> Deskripsi/Instruksi Tugas</label>
+                          <textarea class="form-control" id="mentor-course-task-desc" rows="2" placeholder="Tuliskan deskripsi/tugas yang harus dikumpulkan siswa..." style="border-radius: 8px; padding: 0.5rem 0.75rem; font-size: 0.85rem; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.05); color: #fff;"></textarea>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <button type="submit" class="btn text-white fw-bold w-100 p-3 border-0" id="btn-submit-proposal"
+                style="background: var(--primary-gradient); border-radius: 12px; box-shadow: 0 4px 15px rgba(228, 15, 239, 0.2); transition: all 0.3s ease;">
+                <i class="fas fa-paper-plane me-2"></i> Kirim Usulan Kelas
+              </button>
+            </form>
+          </div>
+        </div>
+
+        <!-- Tabel Riwayat Pengajuan -->
+        <div class="col-lg-6">
+          <div class="table-wrapper h-100">
+            <h5 class="fw-bold mb-4"><i class="fas fa-list me-2 text-muted"></i> Riwayat Pengajuan Kelas</h5>
+            <div class="table-responsive">
+              <table class="table table-custom align-middle">
+                <thead>
+                  <tr>
+                    <th width="35%">Nama Kelas</th>
+                    <th width="30%">Jadwal</th>
+                    <th width="20%">Status</th>
+                    <th width="15%">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody id="mentor-proposed-courses-table-body">
+                  <tr>
+                    <td colspan="4" class="text-center py-4 text-muted">
+                      <i class="fas fa-spinner fa-spin me-1"></i> Memuat riwayat pengajuan...
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ATTENDANCE / ABSENSI SECTION -->
+    <div id="attendance" class="section">
+      <div class="mb-4">
+        <h2 class="page-title">Absensi & Kehadiran Mahasiswa</h2>
+        <p class="text-muted">Kelola sesi absensi kelas Anda secara dinamis. Anda dapat mengatur rentang waktu absensi dan melihat rekap daftar kehadiran mahasiswa secara real-time.</p>
+      </div>
+
+      <div class="row g-4">
+        <!-- Panel 1: Buat Sesi Absen -->
+        <div class="col-lg-5">
+          <div class="glass-card p-4">
+            <h5 class="fw-bold mb-4 text-primary"><i class="fas fa-clock me-2"></i> Buka Sesi Absensi Baru</h5>
+            <form id="attendance-session-form">
+              <div class="mb-3">
+                <label class="form-label text-muted fw-semibold small"><i class="far fa-calendar-alt text-primary me-1"></i> Tanggal Absensi</label>
+                <input type="date" class="form-control" id="attn-date" required style="border-radius: 12px; padding: 0.75rem 1rem; border: 1px solid #e2e8f0; background: #fff;">
+              </div>
+              <div class="mb-3">
+                <label class="form-label text-muted fw-semibold small"><i class="far fa-clock text-primary me-1"></i> Waktu Absen Dibuka</label>
+                <input type="time" class="form-control" id="attn-time-start" required style="border-radius: 12px; padding: 0.75rem 1rem; border: 1px solid #e2e8f0; background: #fff;">
+              </div>
+              <div class="mb-3">
+                <label class="form-label text-muted fw-semibold small"><i class="far fa-clock text-danger me-1"></i> Waktu Absen Ditutup</label>
+                <input type="time" class="form-control" id="attn-time-end" required style="border-radius: 12px; padding: 0.75rem 1rem; border: 1px solid #e2e8f0; background: #fff;">
+              </div>
+              <div class="mb-4">
+                <label class="form-label text-muted fw-semibold small" for="attn-late-minutes"><i class="fas fa-user-clock text-warning me-1"></i> Toleransi Terlambat (Menit)</label>
+                <input type="number" class="form-control" id="attn-late-minutes" value="15" min="0" required style="border-radius: 12px; padding: 0.75rem 1rem; border: 1px solid #e2e8f0; background: #fff;">
+              </div>
+              <button type="submit" class="btn text-white fw-bold w-100 p-3 border-0" id="btn-create-attn-session"
+                style="background: var(--primary-gradient); border-radius: 12px; box-shadow: 0 4px 15px rgba(228, 15, 239, 0.2); transition: all 0.3s ease;">
+                <i class="fas fa-broadcast-tower me-2"></i> Terbitkan Sesi Absensi
+              </button>
+            </form>
+          </div>
+        </div>
+
+        <!-- Panel 2: Rekap Absensi -->
+        <div class="col-lg-7">
+          <div class="table-wrapper h-100">
+            <h5 class="fw-bold mb-4"><i class="fas fa-list me-2 text-muted"></i> Rekap Kehadiran Kelas</h5>
+            <div class="table-responsive">
+              <table class="table table-custom align-middle">
+                <thead>
+                  <tr>
+                    <th>Mahasiswa</th>
+                    <th>Tanggal</th>
+                    <th>Status</th>
+                    <th>Keterangan</th>
+                  </tr>
+                </thead>
+                <tbody id="attendance-records-table-body">
+                  <tr>
+                    <td colspan="4" class="text-center py-4 text-muted">
+                      <i class="fas fa-info-circle me-1"></i> Sesi kelas belum memiliki rekap absen hari ini.
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Grading Modal Popup -->
+  <div class="modal fade" id="gradingModal" tabindex="-1" aria-labelledby="gradingModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content glass-modal">
+        <div class="modal-header modal-header-gradient">
+          <h5 class="modal-title fw-bold" id="gradingModalLabel"><i class="fas fa-star me-2"></i> Evaluasi & Penilaian
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4">
+          <div class="bg-light rounded-3 p-3 mb-4 border">
+            <span class="text-muted small d-block uppercase fw-bold" style="letter-spacing: 0.5px;">Mahasiswa</span>
+            <span id="modal-student-name" class="fw-bold text-dark fs-5">Nama Mahasiswa</span>
+            <hr class="my-2" />
+            <span class="text-muted small d-block uppercase fw-bold" style="letter-spacing: 0.5px;">Judul Tugas</span>
+            <span id="modal-assignment-title" class="fw-medium text-dark">Judul Tugas Mahasiswa</span>
+          </div>
+
+          <form id="grading-form">
+            <div class="mb-3">
+              <label for="input-grade" class="form-label fw-bold text-dark">Nilai Tugas (Skala 0 - 100)</label>
+              <input type="number" class="form-control" id="input-grade" min="0" max="100" placeholder="Contoh: 90"
+                required />
+            </div>
+
+            <div class="mb-4">
+              <label for="input-feedback" class="form-label fw-bold text-dark">Masukan / Feedback Belajar</label>
+              <textarea class="form-control" id="input-feedback" rows="4"
+                placeholder="Berikan catatan perbaikan atau apresiasi terhadap hasil kerja mahasiswa..."></textarea>
+            </div>
+
+            <div class="d-flex gap-2 justify-content-end">
+              <button type="button" class="btn btn-light rounded-pill px-4 fw-bold"
+                data-bs-dismiss="modal">Batal</button>
+              <button type="submit" class="btn btn-premium rounded-pill px-4 fw-bold" id="submit-grade-btn">Simpan
+                Nilai</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Upload Material Modal Popup -->
+  <div class="modal fade" id="uploadMaterialModal" tabindex="-1" aria-labelledby="uploadMaterialModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content glass-modal">
+        <div class="modal-header modal-header-gradient"
+          style="background: linear-gradient(135deg, #e40fef 0%, #4338ca 100%);">
+          <h5 class="modal-title fw-bold text-white" id="uploadMaterialModalLabel"><i
+              class="fas fa-file-upload me-2"></i> Unggah Materi Pembelajaran</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4">
+          <form id="upload-material-form">
+            <div class="mb-3">
+              <label class="form-label text-muted fw-semibold small"><i
+                  class="fas fa-graduation-cap text-primary me-1"></i> Kelas</label>
+              <input type="text" class="form-control bg-light border-0" id="material-class-name" readonly
+                style="border-radius: 12px; padding: 0.75rem 1rem;">
+            </div>
+            <div class="mb-3">
+              <label for="material-title" class="form-label text-muted fw-semibold small"><i
+                  class="fas fa-book-open text-primary me-1"></i> Judul Materi</label>
+              <input type="text" class="form-control" id="material-title"
+                placeholder="Contoh: Pertemuan 1 - Konsep Dasar KTI" required
+                style="border-radius: 12px; padding: 0.75rem 1rem; border: 1px solid #e2e8f0;">
+            </div>
+            <div class="mb-4">
+              <label for="material-file" class="form-label text-muted fw-semibold small"><i
+                  class="fas fa-file-alt text-primary me-1"></i> File Materi (PDF, PPT, dll)</label>
+              <input type="file" class="form-control" id="material-file" required
+                style="border-radius: 12px; padding: 0.75rem 1rem; border: 1px solid #e2e8f0;">
+            </div>
+            <div class="d-flex gap-2 justify-content-end">
+              <button type="button" class="btn btn-light rounded-pill px-4 fw-bold"
+                data-bs-dismiss="modal">Batal</button>
+              <button type="submit" class="btn btn-premium rounded-pill px-4 fw-bold" id="btn-submit-material">Unggah
+                Materi</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Create Task Modal Popup -->
+  <div class="modal fade" id="createTaskModal" tabindex="-1" aria-labelledby="createTaskModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content glass-modal">
+        <div class="modal-header modal-header-gradient"
+          style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+          <h5 class="modal-title fw-bold text-white" id="createTaskModalLabel"><i class="fas fa-tasks me-2"></i> Buat
+            Tugas & Batas Pengumpulan</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4">
+          <form id="create-task-form">
+            <div class="mb-3">
+              <label class="form-label text-muted fw-semibold small"><i
+                  class="fas fa-graduation-cap text-success me-1"></i> Kelas</label>
+              <input type="text" class="form-control bg-light border-0" id="task-class-name" readonly
+                style="border-radius: 12px; padding: 0.75rem 1rem;">
+            </div>
+            <div class="mb-3">
+              <label for="task-title" class="form-label text-muted fw-semibold small"><i
+                  class="fas fa-edit text-success me-1"></i> Judul Tugas</label>
+              <input type="text" class="form-control" id="task-title"
+                placeholder="Contoh: Tugas Resume Jurnal Metodologi" required
+                style="border-radius: 12px; padding: 0.75rem 1rem; border: 1px solid #e2e8f0;">
+            </div>
+            <div class="mb-3">
+              <label for="task-desc" class="form-label text-muted fw-semibold small"><i
+                  class="fas fa-align-left text-success me-1"></i> Deskripsi / Petunjuk Tugas</label>
+              <textarea class="form-control" id="task-desc" rows="3"
+                placeholder="Tuliskan petunjuk tugas untuk mahasiswa..."
+                style="border-radius: 12px; padding: 0.75rem 1rem; border: 1px solid #e2e8f0;"></textarea>
+            </div>
+            <div class="mb-4">
+              <label for="task-deadline" class="form-label text-muted fw-semibold small"><i
+                  class="far fa-calendar-times text-success me-1"></i> Batas Pengumpulan (Deadline)</label>
+              <input type="datetime-local" class="form-control" id="task-deadline" required
+                style="border-radius: 12px; padding: 0.75rem 1rem; border: 1px solid #e2e8f0;">
+            </div>
+            <div class="d-flex gap-2 justify-content-end">
+              <button type="button" class="btn btn-light rounded-pill px-4 fw-bold"
+                data-bs-dismiss="modal">Batal</button>
+              <button type="submit" class="btn btn-premium rounded-pill px-4 fw-bold text-white" id="btn-submit-task"
+                style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">Terbitkan Tugas</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="/javascript/mentor.js"></script>
+  <script>
+    // Overriding / linking tables since loadAssignments needs to fill both preview and full submissions tables
+    const originalLoadAssignments = loadAssignments;
+    loadAssignments = async function (kelas) {
+      // Run the original function to fill preview
+      await originalLoadAssignments(kelas);
+
+      // Let's populate the full table inside submissions section too
+      const fullTableBody = document.getElementById("full-assignments-table-body");
+      if (!fullTableBody) return;
+
+      // Copy rows or fetch separately, let's just copy the content from preview, or better yet, reuse logic with index
+      try {
+        const response = await fetch(`/api/mentor/assignments?kelas=${encodeURIComponent(kelas)}`);
+        const list = await response.json();
+
+        if (list.length === 0) {
+          fullTableBody.innerHTML = `
+            <tr>
+              <td colspan="6" class="text-center py-5 text-muted">
+                <i class="fas fa-folder-open fa-3x mb-3 text-secondary d-block"></i>
+                Belum ada tugas mahasiswa yang dikumpulkan untuk kelas ini.
+              </td>
+            </tr>
+          `;
+          return;
+        }
+
+        fullTableBody.innerHTML = list.map((item, index) => {
+          const isGraded = item.grade !== null && item.grade !== undefined && item.grade !== "";
+          const badgeStyle = isGraded
+            ? "bg-success-subtle text-success border border-success-subtle"
+            : "bg-warning-subtle text-warning border border-warning-subtle";
+          const badgeLabel = isGraded
+            ? `<i class="fas fa-check-circle me-1"></i> ${item.grade} (Telah Dinilai)`
+            : `<i class="fas fa-clock me-1"></i> Belum Dinilai`;
+
+          const formattedDate = new Date(item.timestamp).toLocaleString("id-ID", {
+            day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit"
+          });
+
+          return `
+            <tr>
+              <td class="fw-semibold text-dark">${index + 1}</td>
+              <td>
+                <div class="d-flex align-items-center gap-2">
+                  <div class="bg-primary-subtle text-primary rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width: 32px; height: 32px; font-size: 0.85rem;">
+                    ${item.username.charAt(0).toUpperCase()}
+                  </div>
+                  <div>
+                    <span class="d-block fw-bold">${item.username}</span>
+                  </div>
+                </div>
+              </td>
+              <td class="fw-medium">${item.title}</td>
+              <td class="text-muted small">${formattedDate}</td>
+              <td>
+                <span class="badge ${badgeStyle}">${badgeLabel}</span>
+              </td>
+              <td>
+                <div class="d-flex gap-2">
+                  <a href="/api/files/${item.id}/download" class="btn btn-outline-secondary btn-sm rounded-pill px-3 py-1 fw-bold" style="font-size: 0.75rem;" download>
+                    <i class="fas fa-download me-1"></i> File
+                  </a>
+                  <button onclick="openGradingModal('${item.id}', '${item.username}', '${item.title}', '${item.grade || ""}', \`${item.feedback || ""}\`)" 
+                    class="btn btn-premium btn-sm rounded-pill px-3 py-1" style="font-size: 0.75rem;">
+                    <i class="fas fa-edit me-1"></i> ${isGraded ? "Edit Nilai" : "Beri Nilai"}
+                  </button>
+                </div>
+              </td>
+            </tr>
+          `;
+        }).join("");
+      } catch (err) {
+        console.error("Gagal memuat detail tabel tugas:", err);
+      }
+    };
+  </script>
+</body>
+
+</html>

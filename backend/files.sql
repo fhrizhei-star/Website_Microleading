@@ -1,0 +1,4 @@
+INSERT INTO files (id, name, filename, type, size, path) VALUES
+(1767508986279, '23431-73837-1-PB.pdf', '1767508986259-23431-73837-1-PB.pdf', 'application/pdf', 612563, 'C:\Users\FAHRI\Documents\Belajar Coding\Web_Project\backend\uploads\1767508986259-23431-73837-1-PB.pdf'),
+('1767674239759', 'Tugas Ekonomi Manajerial_KLP 2.pdf', '1767674239741-Tugas Ekonomi Manajerial_KLP 2.pdf', 'application/pdf', 355831, 'C:\Users\FAHRI\Documents\Belajar Coding\Web_Project\backend\uploads\1767674239741-Tugas Ekonomi Manajerial_KLP 2.pdf'),
+('1767674786133', 'JURNAL EVALUASI PEMBELAJARAN.docx', '1767674786129-JURNAL EVALUASI PEMBELAJARAN.docx', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 48290, 'C:\Users\FAHRI\Documents\Belajar Coding\Web_Project\backend\uploads\1767674786129-JURNAL EVALUASI PEMBELAJARAN.docx');

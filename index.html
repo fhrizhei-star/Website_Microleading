@@ -1,0 +1,708 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Islamic Education Management</title>
+  <link rel="shortcut icon" href="/img/1.png" type="image/x-icon" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap"
+    rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+  <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" rel="stylesheet" />
+  <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+  <script>
+    // FORCE LIGHT THEME ONLY
+    document.documentElement.setAttribute("data-theme", "light");
+    localStorage.setItem("theme", "light");
+
+    // STRICT LOGIN CHECK
+    if (!localStorage.getItem("loggedIn")) {
+      window.location.replace("login.html");
+    } else if (localStorage.getItem("userRole") === "admin") {
+      window.location.replace("admin.html");
+    } else if (localStorage.getItem("userRole") === "mentor") {
+      window.location.replace("mentor.html");
+    }
+  </script>
+</head>
+
+<body>
+  <div class="main-content expanded" id="main-content">
+    <div class="tery">
+      <button class="btn btn-primary mb-3" id="tombol" onclick="toggleSidebar()">
+        <i class="fa-solid fa-bars-staggered"></i>
+      </button>
+
+      <div class="d-flex align-items-center gap-3">
+        <div class="logo">
+          <img src="img/1.png" alt="logo" />
+        </div>
+      </div>
+    </div>
+    <div class="sidebar collapsed" id="sidebar">
+      <div class="p-3">
+        <div class="text-center mb-4">
+          <div class="position-relative d-inline-block mb-3">
+            <img src="/img/1.png" alt="Profile" id="sidebar-profile-pic" class="rounded-circle shadow" style="
+                  width: 80px;
+                  height: 80px;
+                  object-fit: cover;
+                  border: 3px solid #e40fef;
+                " />
+          </div>
+          <h5 class="fw-bold text-white mb-0" id="sidebar-username">
+            Lab MPI
+          </h5>
+          <small class="text-muted">Mahasiswa</small>
+        </div>
+        <hr style="border-color: rgba(255, 255, 255, 0.1)" />
+        <nav class="nav flex-column mt-3">
+          <a class="nav-link" href="#home" onclick="showSection('home')"><i class="fas fa-home"></i> Home</a>
+          <a class="nav-link" href="#class" onclick="showSection('class')"><i class="fas fa-chalkboard-teacher"></i>
+            Class</a>
+          <a class="nav-link" href="#gallery" onclick="showSection('gallery')"><i class="fas fa-images"></i>
+            Dokumentasi</a>
+          <a class="nav-link" href="#inbox" onclick="showSection('inbox')"><i class="fas fa-envelope"></i> Inbox</a>
+          <a class="nav-link" href="#settings" onclick="showSection('settings')"><i class="fas fa-cog"></i> User</a>
+          <hr />
+          <a class="nav-link" href="#" onclick="logout(event)"><i class="fas fa-sign-out-alt"></i> Logout</a>
+        </nav>
+      </div>
+    </div>
+
+    <!-- Home -->
+    <br>
+    <div id="home" class="section">
+      <!-- Advanced Hero Section -->
+      <div class="hero-advanced position-relative overflow-hidden hero-advanced-wrapper">
+        <!-- Floating Background Elements -->
+        <div class="position-absolute top-0 start-0 w-100 h-100 hero-bg-image"></div>
+        <div class="position-absolute bottom-0 start-0 w-100 hero-bottom-fade"></div>
+
+        <div class="container position-relative z-3 py-5">
+          <div class="row align-items-center">
+            <div class="col-lg-7 text-white" data-aos="fade-right">
+              <span class="badge bg-primary px-3 py-2 rounded-pill mb-3 shadow-sm hero-badge">Sistem Akademik
+                Digital</span>
+              <h1 class="display-4 fw-bolder mb-3 hero-title">
+                Laboratorium
+                <span class="hero-title-highlight">Microleading</span>
+              </h1>
+              <p class="lead mb-4 fw-medium hero-subtitle">
+                Manajemen Pendidikan Islam
+                Fakultas Tarbiyah & Keguruan
+                UIN Alauddin Makassar
+
+              </p>
+              <div class="d-flex gap-3">
+                <button class="btn btn-primary px-4 py-3 rounded-pill fw-bold border-0 shadow btn-hero-primary"
+                  onclick="showSection('class')">
+                  <i class="fas fa-chalkboard-teacher me-2"></i> Akses Kelas
+                </button>
+                <button class="btn btn-outline-light px-4 py-3 rounded-pill fw-bold"
+                  onclick="document.getElementById('about-us-section').scrollIntoView({behavior: 'smooth'})">
+                  Tentang Kami
+                </button>
+              </div>
+            </div>
+            <div class="col-lg-5 d-none d-lg-block" data-aos="fade-left" data-aos-delay="200">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="container home-content-wrapper pb-5">
+        <!-- Features Grid -->
+        <div class="row g-4 mb-5 position-relative">
+          <div class="col-md-4" data-aos="fade-up" data-aos-delay="100">
+            <div class="feature-grid-card card h-100 border-0 p-4 rounded-4">
+              <div
+                class="icon-box mb-4 d-inline-flex align-items-center justify-content-center rounded-circle feature-icon-1 shadow-sm">
+                <i class="fas fa-graduation-cap fa-2x"></i>
+              </div>
+              <h4 class="fw-bold mb-3">Pendidikan</h4>
+              <p class="text-muted mb-0">
+                Proses memperoleh pengetahuan dan keterampilan mengajar dengan metode terkini.
+              </p>
+              <div class="feature-card-bg-glow glow-1"></div>
+            </div>
+          </div>
+          <div class="col-md-4" data-aos="fade-up" data-aos-delay="200">
+            <div class="feature-grid-card card h-100 border-0 p-4 rounded-4">
+              <div
+                class="icon-box mb-4 d-inline-flex align-items-center justify-content-center rounded-circle feature-icon-2 shadow-sm">
+                <i class="fas fa-laptop-code fa-2x"></i>
+              </div>
+              <h4 class="fw-bold mb-3">Simulasi</h4>
+              <p class="text-muted mb-0">
+                Fasilitas lab mutakhir untuk mempraktikkan teori pendidikan secara langsung.
+              </p>
+              <div class="feature-card-bg-glow glow-2"></div>
+            </div>
+          </div>
+          <div class="col-md-4" data-aos="fade-up" data-aos-delay="300">
+            <div class="feature-grid-card card h-100 border-0 p-4 rounded-4">
+              <div
+                class="icon-box mb-4 d-inline-flex align-items-center justify-content-center rounded-circle feature-icon-3 shadow-sm">
+                <i class="fas fa-tasks fa-2x"></i>
+              </div>
+              <h4 class="fw-bold mb-3">Manajemen</h4>
+              <p class="text-muted mb-0">
+                Mengelola dan merencanakan metode ajar terbaik untuk masa depan.
+              </p>
+              <div class="feature-card-bg-glow glow-3"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Berita Terkini Section -->
+        <div class="mt-5 pt-4">
+          <div class="text-center mb-5" data-aos="fade-up">
+            <h2 class="fw-bold" style="
+                  background: linear-gradient(135deg, #e40fef 0%, #4338ca 100%);
+                  -webkit-background-clip: text;
+                  background-clip: text;
+                  -webkit-text-fill-color: transparent;
+                  font-size: 2.5rem;
+                ">
+              Berita Terkini
+            </h2>
+            <p class="text-muted">
+              Informasi dan kabar terbaru seputar Lab MPI.
+            </p>
+            <div style="
+                  width: 80px;
+                  height: 5px;
+                  background: linear-gradient(135deg, #e40fef 0%, #4338ca 100%);
+                  margin: 1rem auto;
+                  border-radius: 5px;
+                "></div>
+          </div>
+          <div class="row" id="user-news-container">
+            <!-- News injected by JS -->
+          </div>
+        </div>
+        <!-- Tentang Kami (Visi & Misi) -->
+        <div class="mt-5 pt-5 mb-5" id="about-us-section">
+          <div class="text-center mb-5" data-aos="fade-up">
+            <h2 class="fw-bold"
+              style="background: linear-gradient(135deg, #e40fef 0%, #4338ca 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; font-size: 2.5rem;">
+              Tentang Kami
+            </h2>
+            <div
+              style="width: 80px; height: 5px; background: linear-gradient(135deg, #e40fef 0%, #4338ca 100%); margin: 1rem auto; border-radius: 5px;">
+            </div>
+          </div>
+          <div class="row g-4 align-items-stretch">
+            <div class="col-lg-6" data-aos="fade-right">
+              <div class="p-5 bg-white shadow-sm rounded-4 position-relative overflow-hidden h-100"
+                style="border-left: 5px solid #4338ca; transition: transform 0.3s;"
+                onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
+                <div class="position-absolute top-0 end-0 opacity-10 p-4">
+                  <i class="fas fa-eye fa-5x text-primary"></i>
+                </div>
+                <h3 class="fw-bold mb-4" style="color: #4338ca;"><i class="fas fa-bullseye me-2"></i> Visi</h3>
+                <p class="text-muted lead mb-0" style="font-size: 1.1rem; line-height: 1.8;">
+                  Menjadi pusat keunggulan terdepan dalam pengembangan Pendidikan Islam yang mengintegrasikan
+                  nilai-nilai religius dengan praktik pendidikan modern berbasis teknologi pada tahun 2029.
+                </p>
+              </div>
+            </div>
+            <div class="col-lg-6" data-aos="fade-left">
+              <div class="p-5 bg-white shadow-sm rounded-4 position-relative overflow-hidden h-100"
+                style="border-left: 5px solid #e40fef; transition: transform 0.3s;"
+                onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
+                <div class="position-absolute top-0 end-0 opacity-10 p-4">
+                  <i class="fas fa-rocket fa-5x text-danger"></i>
+                </div>
+                <h3 class="fw-bold mb-4" style="color: #e40fef;"><i class="fas fa-tasks me-2"></i> Misi</h3>
+                <ul class="text-muted lead mb-0" style="font-size: 1.1rem; line-height: 1.8; padding-left: 1.2rem;">
+                  <li>Menyelenggarakan pendidikan berkualitas yang inovatif.</li>
+                  <li>Mencetak lulusan berkarakter pendidik Islami.</li>
+                  <li>Mendorong adaptasi terhadap inovasi dan teknologi masa depan.</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Elegant Footer -->
+      <footer class="mt-5 pt-5 pb-4 text-center text-white position-relative overflow-hidden"
+        style="background: linear-gradient(135deg, #4338ca 0%, #e40fef 100%); border-top-left-radius: 40px; border-top-right-radius: 40px; box-shadow: 0 -10px 30px rgba(0,0,0,0.1);">
+        <div class="position-absolute w-100 h-100 top-0 start-0 opacity-25"
+          style="background: url('data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%23ffffff\' fill-opacity=\'1\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E');">
+        </div>
+        <div class="container position-relative z-3">
+          <h3 class="fw-bold mb-4" style="letter-spacing: 1px;">Mari Terhubung Bersama Kami</h3>
+          <p class="mb-4  mx-auto" style="max-width: 500px; color: white;">Ikuti aktivitas dan informasi
+            terbaru seputar
+            Laboratorium Manajemen Pendidikan Islam melalui kanal media sosial kami.</p>
+          <div class="d-flex justify-content-center gap-4 mb-5">
+            <a href="#" class="btn btn-outline-light rounded-circle d-flex align-items-center justify-content-center"
+              style="width: 50px; height: 50px; transition: all 0.3s;"
+              onmouseover="this.style.background='#fff'; this.style.color='#4338ca';"
+              onmouseout="this.style.background='transparent'; this.style.color='#fff';"><i
+                class="fab fa-instagram fa-lg"></i></a>
+            <a href="#" class="btn btn-outline-light rounded-circle d-flex align-items-center justify-content-center"
+              style="width: 50px; height: 50px; transition: all 0.3s;"
+              onmouseover="this.style.background='#fff'; this.style.color='#4338ca';"
+              onmouseout="this.style.background='transparent'; this.style.color='#fff';"><i
+                class="fab fa-youtube fa-lg"></i></a>
+            <a href="#" class="btn btn-outline-light rounded-circle d-flex align-items-center justify-content-center"
+              style="width: 50px; height: 50px; transition: all 0.3s;"
+              onmouseover="this.style.background='#fff'; this.style.color='#4338ca';"
+              onmouseout="this.style.background='transparent'; this.style.color='#fff';"><i
+                class="fab fa-facebook-f fa-lg"></i></a>
+            <a href="#" class="btn btn-outline-light rounded-circle d-flex align-items-center justify-content-center"
+              style="width: 50px; height: 50px; transition: all 0.3s;"
+              onmouseover="this.style.background='#fff'; this.style.color='#4338ca';"
+              onmouseout="this.style.background='transparent'; this.style.color='#fff';"><i
+                class="fab fa-twitter fa-lg"></i></a>
+          </div>
+          <hr style="border-color: rgb(255, 255, 255);" />
+          <p class="mb-0 mt-4" style="font-size: 0.9rem; color: white;">
+            Created with <i class="fas fa-heart text-danger"></i> by <a href="#"
+              class="text-white fw-bold text-decoration-none">AslebMpi</a>. | &copy; 2025. All Rights Reserved.
+          </p>
+        </div>
+      </footer>
+    </div>
+
+    <div id="class" class="section d-none">
+      <!-- View 1: Catalog Kelas Dinamis -->
+      <div id="class-catalog-view">
+        <div class="text-center mb-5 mt-4">
+          <h2 class="fw-bold section-title-gradient">Katalog Kelas</h2>
+          <p class="text-muted" style="font-size: 1.1rem">
+            Pilih dan daftarkan diri Anda pada kelas yang tersedia.
+          </p>
+          <div class="section-title-divider"></div>
+        </div>
+        <div id="catalog-grid" class="row justify-content-center">
+          <!-- Cards will be injected here by JS -->
+          <div class="text-center text-muted">Memuat daftar kelas...</div>
+        </div>
+      </div>
+
+      <!-- View 2: LMS Dashboard Pribadi -->
+      <div id="lms-dashboard-view" class="lms-dashboard" style="display: none">
+        <div class="lms-header text-center mb-5">
+          <h2 id="lms-class-title" class="fw-bold section-title-gradient">
+            Kelas Anda
+          </h2>
+          <p class="text-muted" style="font-size: 1.1rem">
+            Selamat datang di dashboard kelas Anda. Di sini Anda dapat melihat
+            materi dan mengirimkan tugas sesuai jadwal kuliah.
+          </p>
+
+          <!-- Class Info Widgets -->
+          <div class="row justify-content-center mt-4">
+            <div class="col-md-10 col-lg-8">
+              <div class="card p-3 border-0 bg-light shadow-sm" style="border-radius: 20px;">
+                <div class="row align-items-center">
+                  <div class="col-sm-6 text-sm-start mb-2 mb-sm-0 ps-sm-4">
+                    <div class="text-muted small fw-semibold text-uppercase" style="letter-spacing: 0.5px;"><i
+                        class="fas fa-user-tie text-primary me-1"></i> Mentor Pengajar</div>
+                    <div class="fw-bold text-dark mt-1" id="lms-class-mentor" style="font-size: 1.1rem;">-</div>
+                  </div>
+                  <div class="col-sm-6 text-sm-end pe-sm-4 border-sm-start"
+                    style="border-left: 1px solid rgba(0,0,0,0.08);">
+                    <div class="text-muted small fw-semibold text-uppercase" style="letter-spacing: 0.5px;"><i
+                        class="far fa-calendar-alt text-primary me-1"></i> Jadwal Kelas</div>
+                    <div class="fw-bold text-dark mt-1" id="lms-class-schedule" style="font-size: 1.1rem;">-</div>
+                  </div>
+                </div>
+              </div>
+              <div class="mt-3 d-flex justify-content-center gap-2 align-items-center" id="lms-class-status-badge">
+                <!-- Status badge loaded dynamically -->
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-4">
+            <button onclick="showCatalog()"
+              class="btn btn-outline-primary btn-sm rounded-pill px-4 py-2 fw-medium shadow-sm">
+              <i class="fas fa-exchange-alt me-2"></i>Pilihan Kelas
+            </button>
+          </div>
+          <div class="section-title-divider"></div>
+        </div>
+
+        <!-- Moved Attendance Widget to standalone section -->
+        
+        <!-- Active Attendance Widget (dalam LMS Dashboard) -->
+        <div class="row justify-content-center mb-4">
+          <div class="col-md-10 col-lg-8">
+            <div class="card p-4 border-0 shadow-sm d-none" id="attn-student-widget" style="border-radius: 20px; background: rgba(255, 255, 255, 0.95); border-left: 5px solid #e40fef !important; box-shadow: 0 10px 30px rgba(0,0,0,0.05) !important;">
+              <div class="d-flex align-items-center justify-content-between mb-3">
+                <h5 class="fw-bold text-dark mb-0"><i class="fas fa-user-clock text-primary me-2"></i> Absensi Kehadiran Hari Ini</h5>
+                <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-3 py-1 rounded-pill fw-semibold" id="attn-session-time-badge">08:00 - 10:30</span>
+              </div>
+              <div id="attn-status-msg" class="mb-3 text-muted small">Silakan melakukan pengisian daftar kehadiran kelas Anda sebelum batas waktu yang ditentukan.</div>
+              
+              <form id="student-attendance-form" class="row g-2 align-items-center">
+                <div class="col-sm-4">
+                  <select class="form-select bg-light border-0" id="attn-status-select" required style="border-radius: 12px; padding: 0.75rem 1rem; cursor: pointer; border: 1px solid #e2e8f0;">
+                    <option value="" disabled selected>Status Kehadiran</option>
+                    <option value="Hadir">Hadir</option>
+                    <option value="Izin">Izin</option>
+                    <option value="Sakit">Sakit</option>
+                  </select>
+                </div>
+                <div class="col-sm-5">
+                  <input type="text" class="form-control bg-light border-0" id="attn-keterangan" placeholder="Keterangan / Alasan (Izin / Sakit)" style="border-radius: 12px; padding: 0.75rem 1rem; border: 1px solid #e2e8f0; background: #fff;">
+                </div>
+                <div class="col-sm-3">
+                  <button type="submit" class="btn text-white fw-bold w-100 p-3 border-0" id="btn-submit-attn" style="background: var(--primary-gradient); border-radius: 12px; font-size: 0.9rem;">
+                    <i class="fas fa-check-circle me-1"></i> Kirim Absen
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        <!-- Riwayat Kehadiran (dalam LMS Dashboard) -->
+        <div class="row justify-content-center mb-5">
+          <div class="col-md-10 col-lg-8">
+            <div class="card p-4 border-0 shadow-sm" style="border-radius: 20px; background: rgba(255, 255, 255, 0.95); box-shadow: 0 10px 30px rgba(0,0,0,0.03) !important;">
+              <div class="d-flex align-items-center justify-content-between mb-4">
+                <h5 class="fw-bold text-dark mb-0"><i class="fas fa-history text-primary me-2"></i> Riwayat Kehadiran Anda</h5>
+                <button class="btn btn-sm btn-outline-secondary rounded-pill px-3" type="button" data-bs-toggle="collapse" data-bs-target="#collapseAttendanceHistory" aria-expanded="false" aria-controls="collapseAttendanceHistory">
+                  <i class="fas fa-eye me-1"></i> Tampilkan/Sembunyikan
+                </button>
+              </div>
+              
+              <div class="collapse show" id="collapseAttendanceHistory">
+                <div class="table-responsive">
+                  <table class="table align-middle mb-0" style="min-width: 500px;">
+                    <thead>
+                      <tr class="text-muted small fw-bold">
+                        <th width="30%">Tanggal Perkuliahan</th>
+                        <th width="25%">Jam Sesi</th>
+                        <th width="20%">Status Kehadiran</th>
+                        <th width="25%">Keterangan</th>
+                      </tr>
+                    </thead>
+                    <tbody id="student-attendance-history-body">
+                      <!-- Injected via JS -->
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="lms-content-wrapper-relative">
+          <!-- Dynamic Glassmorphic Lock Overlay will be injected here if class is locked -->
+          <div class="lms-content row" id="lms-content-row">
+            <!-- Materi Section -->
+            <div class="col-md-6 mb-4">
+              <div class="card p-4 h-100 shadow-sm border-0" style="border-radius: var(--radius-xl)">
+                <h4 class="fw-bold mb-3">
+                  <i class="fas fa-book-open" style="color: var(--primary)"></i>
+                  Materi Pembelajaran
+                </h4>
+                <p class="text-muted small mb-4">
+                  Materi yang diunggah oleh pengajar akan muncul di sini.
+                </p>
+                <div id="lms-materials-list" class="list-group list-group-flush">
+                  <div class="text-center text-muted py-4 bg-light rounded">
+                    <i class="fas fa-folder-open fa-3x mb-3" style="color: #cbd5e1"></i>
+                    <p class="mb-0 fw-medium">
+                      Belum ada materi untuk saat ini.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Tugas Section -->
+            <div class="col-md-6 mb-4">
+              <div class="card p-4 h-100 shadow-sm border-0" style="border-radius: var(--radius-xl)">
+                <h4 class="fw-bold mb-3">
+                  <i class="fas fa-tasks text-success"></i> Pengumpulan Tugas
+                </h4>
+                <p class="text-muted small mb-4">
+                  Kirimkan tugas Anda melalui form di bawah ini.
+                </p>
+                <form id="assignment-form">
+                  <div class="mb-3">
+                    <label for="assignment-task-select" class="form-label fw-bold text-dark">Pilih Tugas Kuliah</label>
+                    <select class="form-select p-3 bg-light border-0" id="assignment-task-select" required
+                      style="border-radius: 12px; cursor: pointer;">
+                      <option value="" disabled selected>Pilih tugas yang ingin dikumpulkan...</option>
+                      <option value="general">Tugas Bebas / Mandiri (Tanpa Batas Waktu)</option>
+                    </select>
+                  </div>
+                  <!-- Dynamic Task Detail Section -->
+                  <div id="student-task-details" class="mb-3 p-3 bg-light rounded-4 border d-none"
+                    style="transition: all 0.3s ease;">
+                    <span class="text-muted small d-block uppercase fw-bold"
+                      style="letter-spacing: 0.5px; font-size: 0.75rem;"><i
+                        class="fas fa-info-circle text-primary me-1"></i> Deskripsi Tugas</span>
+                    <p id="student-task-desc" class="small text-dark mb-2" style="font-size: 0.82rem;">-</p>
+                    <span class="text-muted small d-block uppercase fw-bold"
+                      style="letter-spacing: 0.5px; font-size: 0.75rem;"><i class="far fa-clock text-danger me-1"></i>
+                      Batas Pengumpulan (Deadline)</span>
+                    <p id="student-task-deadline" class="small fw-semibold text-danger mb-0"
+                      style="font-size: 0.82rem;">-</p>
+                  </div>
+                  <div class="mb-4">
+                    <label for="assignment-file" class="form-label fw-bold text-dark">File Tugas</label>
+                    <input type="file" class="form-control p-3 bg-light border-0 shadow-sm" id="assignment-file"
+                      required style="border-radius: 12px" />
+                  </div>
+                  <button type="submit" class="btn w-100 p-3 text-white fw-bold border-0" style="
+                      background: linear-gradient(
+                        135deg,
+                        #e40fef 0%,
+                        #4338ca 100%
+                      );
+                      border-radius: 12px;
+                      transition: all 0.3s;
+                    " onmouseover="
+                      this.style.transform = 'translateY(-3px)';
+                      this.style.boxShadow =
+                        '0 8px 20px rgba(228, 15, 239, 0.4)';
+                    " onmouseout="
+                      this.style.transform = 'translateY(0)';
+                      this.style.boxShadow = 'none';
+                    ">
+                    <i class="fas fa-paper-plane me-2"></i> Kirim Tugas Sekarang
+                  </button>
+                </form>
+                <div id="assignment-status" class="mt-3 text-center fw-medium"></div>
+              </div>
+            </div>
+          </div> <!-- Closes lms-content row -->
+        </div> <!-- Closes lms-content-wrapper-relative -->
+      </div> <!-- Closes lms-dashboard-view -->
+    </div>
+
+    <div id="gallery" class="section d-none">
+      <div class="gallery-header text-center mb-5 mt-4">
+        <h2 class="fw-bold section-title-gradient">Galeri Dokumentasi</h2>
+        <p class="text-muted" style="font-size: 1.1rem">
+          Kumpulan momen dan dokumentasi kegiatan Lab Microteaching.
+        </p>
+        <div style="
+              width: 80px;
+              height: 5px;
+              background: linear-gradient(135deg, #e40fef 0%, #4338ca 100%);
+              margin: 1rem auto;
+              border-radius: 5px;
+            "></div>
+      </div>
+
+      <div class="mt-4">
+        <div class="row" id="gallery-container" style="--bs-gutter-y: 1.5rem">
+          <!-- Images will be injected here -->
+        </div>
+      </div>
+    </div>
+
+    <div id="settings" class="section d-none">
+      <div class="text-center mb-5 mt-4">
+        <h2 class="fw-bold section-title-gradient">Pengaturan Akun</h2>
+        <p class="text-muted" style="font-size: 1.1rem">
+          Perbarui profil dan kata sandi Anda di sini.
+        </p>
+        <div class="section-title-divider"></div>
+      </div>
+
+      <div class="row justify-content-center">
+        <div class="col-md-8">
+          <div class="card p-4 border-0 shadow-sm" style="border-radius: 20px">
+            <form id="settings-form">
+              <div class="text-center mb-4">
+                <div class="position-relative d-inline-block pulse-glow settings-profile-container">
+                  <img src="/img/1.png" alt="Profile" id="set-profile-preview"
+                    class="rounded-circle shadow-sm settings-profile-img" />
+                </div>
+                <div class="mt-4">
+                  <label for="set-profile-pic"
+                    class="btn btn-primary rounded-pill px-4 py-2 fw-bold shadow-sm settings-camera-btn">
+                    <i class="fas fa-camera me-2"></i> Ubah & Paskan Foto
+                    Profil
+                  </label>
+                  <input type="file" id="set-profile-pic" class="d-none" accept="image/*"
+                    onchange="previewProfilePic(event)" />
+                </div>
+                <p class="text-muted mt-2 small fw-bold" style="letter-spacing: 1px">
+                  <i class="fas fa-magic me-1 text-primary"></i> Atur rasio
+                  gambar agar tidak gepeng!
+                </p>
+              </div>
+              <div class="row">
+                <div class="col-md-6 mb-3">
+                  <label class="form-label fw-bold">Username</label>
+                  <input type="text" class="form-control" id="set-username" disabled readonly />
+                </div>
+                <div class="col-md-6 mb-3">
+                  <label class="form-label fw-bold">NIM</label>
+                  <input type="text" class="form-control" id="set-nim" />
+                </div>
+              </div>
+              <div class="row">
+                <div class="col-md-6 mb-3">
+                  <label class="form-label fw-bold">Angkatan</label>
+                  <input type="text" class="form-control" id="set-angkatan" />
+                </div>
+                <div class="col-md-6 mb-3">
+                  <label class="form-label fw-bold">Nomor HP</label>
+                  <input type="text" class="form-control" id="set-nomerHp" />
+                </div>
+              </div>
+              <div class="mb-4">
+                <label class="form-label fw-bold">Password Baru
+                  <small class="text-muted">(Kosongkan jika tidak ingin mengubah)</small></label>
+                <input type="password" class="form-control" id="set-password" />
+              </div>
+              <button type="submit" class="btn w-100 p-3 text-white fw-bold border-0 settings-save-btn">
+                <i class="fas fa-save me-2"></i> Simpan Perubahan
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cropper Modal -->
+      <div class="modal fade" id="cropperModal" tabindex="-1" aria-labelledby="cropperModalLabel" aria-hidden="true"
+        data-bs-backdrop="static">
+        <div class="modal-dialog modal-dialog-centered">
+          <div class="modal-content glass-card border-0" style="background: var(--glass-card)">
+            <div class="modal-header border-bottom border-secondary">
+              <h5 class="modal-title fw-bold" id="cropperModalLabel">
+                <i class="fas fa-crop-alt me-2 text-primary"></i>Sesuaikan
+                Posisi Wajah
+              </h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"
+                style="filter: invert(var(--dark-mode-invert, 0))"></button>
+            </div>
+            <div class="modal-body p-0 bg-dark position-relative">
+              <div style="max-height: 400px; overflow: hidden; width: 100%">
+                <img id="imageToCrop" src="" style="max-width: 100%; display: block" />
+              </div>
+            </div>
+            <div class="modal-footer border-top border-secondary justify-content-between">
+              <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">
+                Batal
+              </button>
+              <button type="button" class="btn btn-primary rounded-pill px-4 fw-bold" id="cropImageBtn" style="
+                    background: linear-gradient(135deg, #e40fef, #4338ca);
+                    border: none;
+                  ">
+                <i class="fas fa-check me-2"></i>Terapkan & Simpan
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      </div>
+    </div>
+
+    <!-- Inbox Page -->
+    <div id="inbox" class="section d-none">
+      <div class="text-center mb-5 mt-4">
+        <h2 class="fw-bold section-title-gradient">Kotak Masuk & Penilaian</h2>
+        <p class="text-muted" style="font-size: 1.1rem">
+          Lihat nilai dan masukan/saran dari mentor untuk tugas yang telah Anda kirimkan.
+        </p>
+        <div class="section-title-divider"></div>
+      </div>
+
+      <div class="row justify-content-center">
+        <div class="col-md-10">
+          <div class="card p-4 border-0 shadow-sm" style="border-radius: 20px">
+            <div class="table-responsive">
+              <table class="table table-borderless align-middle">
+                <thead>
+                  <tr class="border-bottom text-muted small fw-bold">
+                    <th width="35%">Judul Tugas</th>
+                    <th width="20%">Kelas</th>
+                    <th width="20%">Nilai</th>
+                    <th width="25%">Saran / Feedback Mentor</th>
+                  </tr>
+                </thead>
+                <tbody id="inbox-table-body">
+                  <tr>
+                    <td colspan="4" class="text-center py-4 text-muted">
+                      <i class="fas fa-spinner fa-spin me-1"></i> Memuat inbox...
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- News Detail Page -->
+    <div id="news-detail-page" class="section d-none">
+      <div class="container py-5" style="max-width: 900px;">
+        <button class="btn btn-outline-primary mb-4 rounded-pill px-4 fw-bold" onclick="showSection('home')">
+          <i class="fas fa-arrow-left me-2"></i> Kembali ke Beranda
+        </button>
+        
+        <div class="card border-0 shadow-sm rounded-4 overflow-hidden" style="background: var(--glass-card);">
+          <div id="news-detail-image-container">
+            <!-- Image injected via JS -->
+          </div>
+          <div class="card-body p-5">
+            <div class="mb-4">
+              <span class="badge px-3 py-2 rounded-pill fw-bold" style="background: linear-gradient(135deg, #e40fef, #4338ca); color: white;"><i class="far fa-newspaper me-1"></i> Berita Utama</span>
+              <span class="text-muted ms-3 fw-bold" id="news-detail-date"><i class="far fa-calendar-alt me-1"></i> -</span>
+            </div>
+            <h1 class="fw-bolder mb-4" id="news-detail-title" style="font-size: 2.5rem;">-</h1>
+            
+            <hr class="mb-4" style="border-color: rgba(0,0,0,0.1);">
+            
+            <div class="news-content text-muted" id="news-detail-content" style="font-size: 1.15rem; line-height: 1.9; text-align: justify;">
+              <!-- Content injected via JS -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Floating Chat Toggler with Admin -->
+  <button class="btn btn-primary rounded-circle shadow-lg chat-admin-btn" onclick="toggleAdminChat()" style="
+    position: fixed;
+    bottom: 25px;
+    right: 25px;
+    width: 60px;
+    height: 60px;
+    z-index: 1050;
+    background: linear-gradient(135deg, #e40fef, #4338ca);
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.5rem;
+    transition: transform 0.3s;
+  " onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'" title="Chat Admin">
+    <i class="fas fa-comments"></i>
+  </button>
+
+  <script>
+    AOS.init();
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="/javascript/script.js?v=4"></script>
+</body>
+
+</html>

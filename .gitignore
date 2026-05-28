@@ -1,0 +1,22 @@
+# Dependency directories
+node_modules/
+backend/node_modules/
+
+# Local media and upload stores (User uploads, assignments, profile pics)
+backend/uploads/*
+!backend/uploads/.gitkeep
+backend/gallery/*
+!backend/gallery/.gitkeep
+
+# Sensitive environment variables and secrets
+backend/.env
+.env
+*.json
+!package.json
+!package-lock.json
+!backend/package.json
+!backend/package-lock.json
+
+# Operating System temporary files
+.DS_Store
+Thumbs.db

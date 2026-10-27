@@ -108,10 +108,14 @@ const DEFAULT_NEWS = [
 ];
 
 const DEFAULT_GALLERY = [
-  { name: "Praktikum Microleading", path: "/img/kelas 1.jpeg", timestamp: new Date().toISOString() },
-  { name: "Suasana Laboratorium", path: "/img/kelas 2.jpeg", timestamp: new Date().toISOString() },
-  { name: "Campus View", path: "/img/campus1.jpg", timestamp: new Date().toISOString() },
-  { name: "Perpustakaan", path: "/img/perpus.jpg", timestamp: new Date().toISOString() },
+  { id: "gal_1", name: "Praktikum Microteaching & Kepemimpinan", path: "/img/kelas 1.jpeg", category: "praktikum", timestamp: new Date(Date.now() - 7200000).toISOString() },
+  { id: "gal_2", name: "Suasana Diskusi Laboratorium MPI", path: "/img/kelas 2.jpeg", category: "praktikum", timestamp: new Date(Date.now() - 6000000).toISOString() },
+  { id: "gal_3", name: "Gedung Fakultas Tarbiyah & Keguruan Kampus II", path: "/img/campus1.jpg", category: "fasilitas", timestamp: new Date(Date.now() - 5000000).toISOString() },
+  { id: "gal_4", name: "Pojok Literasi & Koleksi Riset Skripsi", path: "/img/perpus.jpg", category: "fasilitas", timestamp: new Date(Date.now() - 4000000).toISOString() },
+  { id: "gal_5", name: "Sesi Foto Bersama Mahasiswa & Instruktur", path: "/img/student.jpg", category: "kegiatan", timestamp: new Date(Date.now() - 3000000).toISOString() },
+  { id: "gal_6", name: "Tim Dosen & Laboran Pengelola Lab Microleading", path: "/img/tim.jpg", category: "profil", timestamp: new Date(Date.now() - 2000000).toISOString() },
+  { id: "gal_7", name: "Gedung Rektorat Kampus UIN Alauddin", path: "/img/uin.jpg", category: "fasilitas", timestamp: new Date(Date.now() - 1000000).toISOString() },
+  { id: "gal_8", name: "Workshop Penulisan Karya Ilmiah Nasional", path: "/img/bg.jpg", category: "kegiatan", timestamp: new Date().toISOString() },
 ];
 
 const DEFAULT_COURSES = [
@@ -203,7 +207,7 @@ async function syncFirestoreSeeds() {
     if (galSnap.empty) {
       console.log('🌱 [Firebase] Seeding data awal gallery...');
       for (const g of DEFAULT_GALLERY) {
-        await addDoc(collection(db, 'gallery'), g);
+        await setDoc(doc(db, 'gallery', g.id), g);
       }
     }
 
@@ -609,25 +613,57 @@ export async function getGallery() {
     }
   }
   await delay();
-  return getStore("mpi_gallery");
+  let list = getStore("mpi_gallery");
+  if (!Array.isArray(list) || list.length === 0) {
+    list = DEFAULT_GALLERY;
+    setStore("mpi_gallery", list);
+  } else {
+    // Normalization: Ensure all items have an id and category
+    let changed = false;
+    list = list.map((item, idx) => {
+      let updated = { ...item };
+      if (!updated.id) {
+        updated.id = `gal_${idx + 1}_${Date.now()}`;
+        changed = true;
+      }
+      if (!updated.category) {
+        updated.category = 'praktikum';
+        changed = true;
+      }
+      return updated;
+    });
+    if (changed) {
+      setStore("mpi_gallery", list);
+    }
+  }
+  return list;
 }
 
 export async function addGalleryItem(data) {
-  const newItem = { ...data, timestamp: new Date().toISOString() };
+  const newItem = {
+    ...data,
+    category: data.category || 'praktikum',
+    timestamp: data.timestamp || new Date().toISOString()
+  };
   if (isFirebaseConfigured && db) {
     try {
       const docRef = await addDoc(collection(db, 'gallery'), newItem);
       const created = { ...newItem, id: docRef.id };
-      setStore("mpi_gallery", [created, ...getStore("mpi_gallery")]);
+      const current = getStore("mpi_gallery") || [];
+      const updated = [created, ...current];
+      setStore("mpi_gallery", updated);
+      window.dispatchEvent(new CustomEvent('mpi_gallery_updated', { detail: updated }));
       return created;
     } catch (err) {
       console.warn('⚠️ [Firestore] addGalleryItem error:', err.message);
     }
   }
   await delay();
-  const gallery = getStore("mpi_gallery");
+  const gallery = getStore("mpi_gallery") || [];
   const localItem = { ...newItem, id: `gal_${Date.now()}` };
-  setStore("mpi_gallery", [localItem, ...gallery]);
+  const updated = [localItem, ...gallery];
+  setStore("mpi_gallery", updated);
+  window.dispatchEvent(new CustomEvent('mpi_gallery_updated', { detail: updated }));
   return localItem;
 }
 
@@ -640,7 +676,14 @@ export async function deleteGalleryItem(id) {
     }
   }
   await delay();
-  setStore("mpi_gallery", getStore("mpi_gallery").filter(g => String(g.id) !== String(id)));
+  const current = getStore("mpi_gallery") || [];
+  const updated = current.filter(g =>
+    String(g.id) !== String(id) &&
+    g.name !== id &&
+    g.path !== id
+  );
+  setStore("mpi_gallery", updated);
+  window.dispatchEvent(new CustomEvent('mpi_gallery_updated', { detail: updated }));
   return true;
 }
 

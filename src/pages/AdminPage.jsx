@@ -1753,27 +1753,70 @@ function NewsPanel() {
 // ==========================================
 function GalleryPanel({ gallery, onReload }) {
   const [showAddForm, setShowAddForm] = useState(false);
-  const [newItem, setNewItem] = useState({ name: '', path: '' });
+  const [newItem, setNewItem] = useState({ name: '', path: '', category: 'praktikum' });
   const [fileName, setFileName] = useState('');
   const galleryFileInputRef = useRef(null);
 
-  // Handle Photo Upload from Computer
+  const CATEGORY_NAMES = {
+    praktikum: 'Praktikum & Kelas',
+    fasilitas: 'Fasilitas & Kampus',
+    kegiatan: 'Workshop & Acara',
+    profil: 'Tim Pengelola',
+  };
+
+  // Handle Photo Upload from Computer with Canvas Compression
   const handleGalleryFileChange = (e) => {
     const file = e.target.files?.[0];
     if (file) {
       if (!file.type.startsWith('image/')) {
-        showAlert('Harap pilih file gambar yang valid (JPG, PNG, WebP)!', 'warning');
+        showAlert({
+          title: 'Format Berkas Salah',
+          message: 'Harap pilih file gambar yang valid (JPG, PNG, WebP)!',
+          type: 'warning',
+        });
         return;
       }
       setFileName(file.name);
       const reader = new FileReader();
       reader.onload = (event) => {
-        setNewItem(prev => ({
-          ...prev,
-          path: event.target.result,
-          name: prev.name ? prev.name : file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ')
-        }));
-        playSuccess();
+        const rawUrl = event.target?.result;
+        const img = new Image();
+        img.onload = () => {
+          try {
+            const canvas = document.createElement('canvas');
+            let w = img.width;
+            let h = img.height;
+            const MAX_DIM = 1200;
+            if (w > MAX_DIM || h > MAX_DIM) {
+              if (w > h) {
+                h = Math.round((h * MAX_DIM) / w);
+                w = MAX_DIM;
+              } else {
+                w = Math.round((w * MAX_DIM) / h);
+                h = MAX_DIM;
+              }
+            }
+            canvas.width = w;
+            canvas.height = h;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, w, h);
+            const compressed = canvas.toDataURL('image/jpeg', 0.85);
+            setNewItem(prev => ({
+              ...prev,
+              path: compressed,
+              name: prev.name ? prev.name : file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ')
+            }));
+            playSuccess();
+          } catch (err) {
+            setNewItem(prev => ({
+              ...prev,
+              path: rawUrl,
+              name: prev.name ? prev.name : file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ')
+            }));
+            playSuccess();
+          }
+        };
+        img.src = rawUrl;
       };
       reader.readAsDataURL(file);
     }
@@ -1800,12 +1843,12 @@ function GalleryPanel({ gallery, onReload }) {
     await addGalleryItem(newItem);
     playSuccess();
     setShowAddForm(false);
-    setNewItem({ name: '', path: '' });
+    setNewItem({ name: '', path: '', category: 'praktikum' });
     setFileName('');
     onReload();
   };
 
-  const handleDelete = async (id) => {
+  const handleDelete = async (target) => {
     const ok = await showConfirm({
       title: 'Hapus Foto Galeri?',
       message: 'Foto dokumentasi ini akan dihapus secara permanen dari galeri laboratorium.',
@@ -1813,7 +1856,7 @@ function GalleryPanel({ gallery, onReload }) {
       type: 'danger',
     });
     if (!ok) return;
-    await deleteGalleryItem(id);
+    await deleteGalleryItem(target);
     playClick();
     onReload();
   };
@@ -1823,7 +1866,7 @@ function GalleryPanel({ gallery, onReload }) {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h2 className="font-display font-extrabold text-xl text-slate-900">Galeri</h2>
-          <p className="text-xs text-slate-500">Kelola foto dokumentasi kegiatan praktikum, seminar, dan fasilitas laboratorium.</p>
+          <p className="text-xs text-slate-500">Kelola foto dokumentasi kegiatan praktikum, seminar, dan fasilitas laboratorium (sinkron langsung dengan website publik).</p>
         </div>
         <button
           onClick={() => { playClick(); setShowAddForm(!showAddForm); }}
@@ -1861,7 +1904,7 @@ function GalleryPanel({ gallery, onReload }) {
 
                 <div className="flex flex-col sm:flex-row items-center gap-4 p-4 rounded-2xl bg-purple-50/50 border-2 border-dashed border-purple-200">
                   {newItem.path ? (
-                    <div className="w-full sm:w-44 h-32 rounded-xl overflow-hidden bg-white border border-purple-200 shrink-0 relative group">
+                    <div className="w-full sm:w-44 h-32 rounded-xl overflow-hidden bg-white border border-purple-200 shrink-0 relative group shadow-sm">
                       <img src={newItem.path} alt="Preview Foto" className="w-full h-full object-cover" />
                       <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                         <span className="text-white text-[10px] font-bold">Foto Terpilih</span>
@@ -1880,7 +1923,7 @@ function GalleryPanel({ gallery, onReload }) {
                         {fileName ? `File: ${fileName}` : 'Pilih Berkas Foto dari Komputer / Perangkat Anda'}
                       </p>
                       <p className="text-[11px] text-slate-500 mt-0.5">
-                        Mendukung format JPG, PNG, JPEG, WebP
+                        Mendukung format JPG, PNG, JPEG, WebP (otomatis dikompresi)
                       </p>
                     </div>
 
@@ -1916,16 +1959,32 @@ function GalleryPanel({ gallery, onReload }) {
                 </div>
               </div>
 
-              <div>
-                <label className="text-xs font-bold text-slate-700 uppercase block mb-1">Judul / Keterangan Foto *</label>
-                <input
-                  type="text"
-                  required
-                  value={newItem.name}
-                  onChange={e => setNewItem(prev => ({ ...prev, name: e.target.value }))}
-                  placeholder="Contoh: Praktikum Microleading Mahasiswa Semester 6"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-purple-200 text-sm bg-white focus:outline-none focus:border-purple-600"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-bold text-slate-700 uppercase block mb-1">Judul / Keterangan Foto *</label>
+                  <input
+                    type="text"
+                    required
+                    value={newItem.name}
+                    onChange={e => setNewItem(prev => ({ ...prev, name: e.target.value }))}
+                    placeholder="Contoh: Praktikum Microleading Mahasiswa Semester 6"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-purple-200 text-sm bg-white focus:outline-none focus:border-purple-600"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-slate-700 uppercase block mb-1">Kategori Dokumentasi *</label>
+                  <select
+                    value={newItem.category}
+                    onChange={e => setNewItem(prev => ({ ...prev, category: e.target.value }))}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-purple-200 text-sm bg-white focus:outline-none focus:border-purple-600"
+                  >
+                    <option value="praktikum">Praktikum & Kelas</option>
+                    <option value="fasilitas">Fasilitas & Kampus</option>
+                    <option value="kegiatan">Workshop & Acara</option>
+                    <option value="profil">Tim Pengelola</option>
+                  </select>
+                </div>
               </div>
 
               <div className="flex gap-2 justify-end pt-2">
@@ -1949,32 +2008,45 @@ function GalleryPanel({ gallery, onReload }) {
       </AnimatePresence>
 
       {/* Gallery Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {gallery.map(g => (
-          <div key={g.id} className="bento-card rounded-2xl overflow-hidden border border-purple-200 group relative">
-            <div className="h-44 w-full overflow-hidden bg-slate-100 relative">
-              <img
-                src={g.path}
-                alt={g.name}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-              />
-              <button
-                onClick={() => handleDelete(g.id)}
-                className="absolute top-2 right-2 p-1.5 rounded-xl bg-white/90 text-rose-600 hover:bg-rose-50 shadow-md transition-colors cursor-pointer"
-                title="Hapus foto"
-              >
-                <Trash2 size={14} />
-              </button>
+      {gallery.length === 0 ? (
+        <div className="py-12 text-center glass-panel rounded-2xl border border-dashed border-purple-200 p-8">
+          <Images size={36} className="mx-auto text-purple-400 mb-2" />
+          <p className="text-sm font-bold text-slate-800">Belum ada foto di galeri</p>
+          <p className="text-xs text-slate-500 mt-1">Klik tombol &quot;Tambah Foto Baru&quot; untuk mengunggah dokumentasi laboratorium.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {gallery.map(g => (
+            <div key={g.id || g.path} className="bento-card rounded-2xl overflow-hidden border border-purple-200 group relative">
+              <div className="h-44 w-full overflow-hidden bg-slate-100 relative">
+                <img
+                  src={g.path}
+                  alt={g.name}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                />
+                <div className="absolute top-2 left-2">
+                  <span className="px-2 py-0.5 rounded-md text-[9px] font-bold bg-slate-900/70 text-white backdrop-blur-md uppercase">
+                    {CATEGORY_NAMES[g.category] || g.category || 'Praktikum'}
+                  </span>
+                </div>
+                <button
+                  onClick={() => handleDelete(g.id || g.name || g.path)}
+                  className="absolute top-2 right-2 p-1.5 rounded-xl bg-white/90 text-rose-600 hover:bg-rose-50 shadow-md transition-colors cursor-pointer"
+                  title="Hapus foto"
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
+              <div className="p-3">
+                <p className="font-bold text-xs text-slate-900 truncate" title={g.name}>{g.name}</p>
+                <p className="text-[10px] text-slate-400 mt-0.5">
+                  {new Date(g.timestamp || Date.now()).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+                </p>
+              </div>
             </div>
-            <div className="p-3">
-              <p className="font-bold text-xs text-slate-900 truncate">{g.name}</p>
-              <p className="text-[10px] text-slate-400 mt-0.5">
-                {new Date(g.timestamp || Date.now()).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
-              </p>
-            </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -3490,8 +3562,19 @@ export default function AdminPage() {
     const handleSync = () => {
       getMembers().then(data => { if (data) setMembers(data); });
     };
+    const handleGallerySync = (e) => {
+      if (e?.detail && Array.isArray(e.detail)) {
+        setGallery(e.detail);
+      } else {
+        getGallery().then(data => { if (data) setGallery(data); });
+      }
+    };
     window.addEventListener('mpi_members_updated', handleSync);
-    return () => window.removeEventListener('mpi_members_updated', handleSync);
+    window.addEventListener('mpi_gallery_updated', handleGallerySync);
+    return () => {
+      window.removeEventListener('mpi_members_updated', handleSync);
+      window.removeEventListener('mpi_gallery_updated', handleGallerySync);
+    };
   }, []);
 
   const handleLogout = () => {

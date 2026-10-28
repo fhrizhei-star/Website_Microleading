@@ -130,7 +130,7 @@ export const renderCertCanvas = async (record) => {
   canvas.height = img.naturalHeight || img.height || 990;
   const ctx = canvas.getContext('2d');
 
-  // 1. Gambar latar belakang template
+  // 1. Gambar latar belakang template (Portrait atau Landscape)
   ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
   // 2. Gambar nama peserta sesuai koordinat & font dari admin
@@ -141,23 +141,43 @@ export const renderCertCanvas = async (record) => {
   const fontFamily = layout.fontFamily || "'Playfair Display', Georgia, serif";
   const fontWeight = layout.fontWeight || '700';
 
-  ctx.font = `${fontWeight} ${computedFontSize}px ${fontFamily}`;
+  const posX = (canvas.width * (layout.left || 50)) / 100;
+  const posY = (canvas.height * (layout.top || 48)) / 100;
+
+  // --- SOLUSI 1: AUTO-SCALING FONT UNTUK NAMA PANJANG ---
+  // Tentukan batas aman lebar nama agar tidak menabrak bingkai sertifikat
+  const marginDistance = Math.min(posX, canvas.width - posX);
+  const maxAllowedWidth = Math.min(canvas.width * 0.82, Math.max(marginDistance * 1.85, 300));
+
+  let actualFontSize = computedFontSize;
+  ctx.font = `${fontWeight} ${actualFontSize}px ${fontFamily}`;
   ctx.fillStyle = layout.color || '#854d0e';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
 
-  const posX = (canvas.width * (layout.left || 50)) / 100;
-  const posY = (canvas.height * (layout.top || 48)) / 100;
+  const namaText = String(record.nama || '').trim();
+  let textWidth = ctx.measureText(namaText).width;
 
-  ctx.fillText(record.nama, posX, posY);
+  // Jika nama peserta panjang dan melebihi batas aman, perkecil font secara otomatis dan proporsional
+  if (textWidth > maxAllowedWidth && textWidth > 0) {
+    const scaleFactor = maxAllowedWidth / textWidth;
+    const minFontSize = Math.round(16 * scale); // batas minimal font agar tetap terbaca jelas
+    actualFontSize = Math.max(Math.floor(computedFontSize * scaleFactor), minFontSize);
+    ctx.font = `${fontWeight} ${actualFontSize}px ${fontFamily}`;
+    textWidth = ctx.measureText(namaText).width;
+  }
 
-  if (layout.underline) {
-    const textWidth = ctx.measureText(record.nama).width;
-    ctx.lineWidth = 2 * scale;
+  // Tuliskan nama peserta (hanya nama peserta yang ditambahkan otomatis)
+  ctx.fillText(namaText, posX, posY);
+
+  // Garis bawah (Underline) presisi mengikuti panjang nama yang telah diskalakan
+  if (layout.underline && namaText) {
+    const finalLineWidth = Math.min(textWidth, maxAllowedWidth);
+    ctx.lineWidth = Math.max(2, Math.round(2 * scale));
     ctx.strokeStyle = layout.color || '#854d0e';
     ctx.beginPath();
-    ctx.moveTo(posX - textWidth / 2, posY + computedFontSize / 2 + 4);
-    ctx.lineTo(posX + textWidth / 2, posY + computedFontSize / 2 + 4);
+    ctx.moveTo(posX - finalLineWidth / 2, posY + actualFontSize / 2 + (4 * scale));
+    ctx.lineTo(posX + finalLineWidth / 2, posY + actualFontSize / 2 + (4 * scale));
     ctx.stroke();
   }
   return canvas;
@@ -168,9 +188,12 @@ export const downloadCertPdf = async (record) => {
   try {
     const canvas = await renderCertCanvas(record);
     const imgData = canvas.toDataURL('image/jpeg', 0.98);
-    // Standar resmi sertifikat: Dokumen PDF A4 Landscape (297 x 210 mm)
+    // Deteksi orientasi otomatis: Portrait jika tinggi > lebar atau diset portrait
+    const isPortrait = canvas.height > canvas.width || record.cert_layout?.orientation === 'portrait';
+    const orientation = isPortrait ? 'portrait' : 'landscape';
+
     const pdf = new jsPDF({
-      orientation: 'landscape',
+      orientation,
       unit: 'mm',
       format: 'a4',
       compress: true,
@@ -406,6 +429,7 @@ function CertificatePreviewModal({ record, onClose }) {
   const handlePrint = () => {
     playClick();
     if (!dataUrl) return;
+    const isPortrait = record.cert_layout?.orientation === 'portrait';
     const win = window.open('', '_blank');
     if (win) {
       win.document.write(`
@@ -414,8 +438,8 @@ function CertificatePreviewModal({ record, onClose }) {
           <head>
             <title>${fileName}</title>
             <style>
-              @page { size: landscape; margin: 0; }
-              body { margin: 0; display: flex; align-items: center; justify-content: center; height: 100vh; background: #000; }
+              @page { size: ${isPortrait ? 'portrait' : 'landscape'}; margin: 0; }
+              body { margin: 0; display: flex; align-items: center; justify-content: center; height: 100vh; background: #fff; }
               img { max-width: 100%; max-height: 100%; object-fit: contain; }
             </style>
           </head>

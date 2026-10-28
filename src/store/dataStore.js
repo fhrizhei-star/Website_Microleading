@@ -140,6 +140,7 @@ const DEFAULT_CERT_SETTINGS = {
   color: "#854d0e",
   fontWeight: "700",
   underline: false,
+  orientation: "landscape",
   drive_folder_url: "https://drive.google.com/drive/folders/1EXAMPLE_DRIVE_FOLDER_ID",
   drive_webhook_url: "",
 };
@@ -392,7 +393,10 @@ export async function submitAttendance(data) {
     workshop_date: workshop?.date || new Date().toISOString().split("T")[0],
     speaker: workshop?.speaker || "Pemateri Lab Microleading",
     cert_bg: workshop?.cert_bg || certSettings?.template_bg || "/img/cert-template.jpg",
-    cert_layout: workshop?.cert_layout || {
+    cert_layout: workshop?.cert_layout ? {
+      orientation: 'landscape',
+      ...workshop.cert_layout,
+    } : {
       top: certSettings.top,
       left: certSettings.left,
       fontSize: certSettings.fontSize,
@@ -400,9 +404,10 @@ export async function submitAttendance(data) {
       color: certSettings.color,
       fontWeight: certSettings.fontWeight,
       underline: certSettings.underline,
+      orientation: certSettings.orientation || 'landscape',
     },
-    drive_url: certSettings?.drive_folder_url || null,
-    drive_webhook_url: certSettings?.drive_webhook_url || null,
+    drive_url: workshop?.drive_folder_url || certSettings?.drive_folder_url || null,
+    drive_webhook_url: workshop?.drive_webhook_url || certSettings?.drive_webhook_url || null,
     nama: data.nama,
     identitas: data.identitas,
     instansi: data.instansi,

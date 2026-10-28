@@ -93,10 +93,14 @@ function CertificateStudioPanel() {
     color: '#854d0e',
     fontWeight: '700',
     underline: false,
+    orientation: 'landscape',
     drive_folder_url: 'https://drive.google.com/drive/folders/1EXAMPLE_DRIVE_FOLDER_ID',
     drive_webhook_url: '',
   });
 
+  const [globalSettings, setGlobalSettings] = useState(null);
+  const [workshops, setWorkshops] = useState([]);
+  const [targetWorkshopId, setTargetWorkshopId] = useState('global');
   const [sampleName, setSampleName] = useState('Ahmad Rizky Pratama, S.Pd.');
   const [saveLoading, setSaveLoading] = useState(false);
   const [saveMessage, setSaveMessage] = useState(null);
@@ -107,10 +111,72 @@ function CertificateStudioPanel() {
   useEffect(() => {
     async function load() {
       const data = await getCertSettings();
-      if (data) setSettings(data);
+      if (data) {
+        setSettings(data);
+        setGlobalSettings(data);
+      }
+      const wsList = await getAllWorkshops();
+      setWorkshops(wsList || []);
     }
     load();
   }, []);
+
+  // Ganti target sertifikat (Template Umum vs Khusus Workshop)
+  const handleSwitchTarget = (targetId) => {
+    playClick();
+    setTargetWorkshopId(targetId);
+    setSaveMessage(null);
+    if (targetId === 'global') {
+      if (globalSettings) {
+        setSettings(globalSettings);
+      }
+    } else {
+      const ws = workshops.find((w) => String(w.id) === String(targetId));
+      if (ws) {
+        if (ws.cert_bg) {
+          setSettings({
+            template_bg: ws.cert_bg,
+            top: ws.cert_layout?.top ?? 48,
+            left: ws.cert_layout?.left ?? 50,
+            fontSize: ws.cert_layout?.fontSize ?? 34,
+            fontFamily: ws.cert_layout?.fontFamily ?? "'Playfair Display', Georgia, serif",
+            color: ws.cert_layout?.color ?? '#854d0e',
+            fontWeight: ws.cert_layout?.fontWeight ?? '700',
+            underline: ws.cert_layout?.underline ?? false,
+            orientation: ws.cert_layout?.orientation ?? 'landscape',
+            drive_folder_url: ws.drive_folder_url || globalSettings?.drive_folder_url || '',
+            drive_webhook_url: ws.drive_webhook_url || globalSettings?.drive_webhook_url || '',
+          });
+        } else {
+          // Belum punya template khusus, warisi template global saat ini sebagai dasar
+          setSettings({
+            ...(globalSettings || settings),
+            orientation: globalSettings?.orientation || 'landscape',
+          });
+        }
+      }
+    }
+  };
+
+  // Reset workshop ke template umum lab
+  const handleResetWorkshopToDefault = async () => {
+    const ok = await showConfirm({
+      title: 'Kembalikan ke Template Default?',
+      message: 'Template sertifikat khusus untuk workshop ini akan dihapus dan kembali mengikuti Template Umum Lab.',
+      confirmText: 'Ya, Reset',
+      type: 'warning',
+    });
+    if (!ok) return;
+    await updateWorkshop(targetWorkshopId, { cert_bg: null, cert_layout: null });
+    const wsList = await getAllWorkshops();
+    setWorkshops(wsList);
+    if (globalSettings) setSettings(globalSettings);
+    playSuccess();
+    setSaveMessage({
+      type: 'success',
+      text: 'Template workshop berhasil direset dan kini otomatis mengikuti Template Umum Lab!',
+    });
+  };
 
   const handleUploadImage = (e) => {
     const file = e.target.files?.[0];
@@ -123,6 +189,10 @@ function CertificateStudioPanel() {
       reader.onload = (event) => {
         const img = new Image();
         img.onload = () => {
+          // Deteksi otomatis orientasi: Portrait jika tinggi > lebar, sebaliknya Landscape
+          const isImgPortrait = img.height > img.width;
+          const detectedOrientation = isImgPortrait ? 'portrait' : 'landscape';
+
           // Kompresi otomatis via canvas agar pas di Firestore (< 1MB) tanpa pecah
           const canvas = document.createElement('canvas');
           const maxDim = 1600;
@@ -142,7 +212,11 @@ function CertificateStudioPanel() {
           const ctx = canvas.getContext('2d');
           ctx.drawImage(img, 0, 0, w, h);
           const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.82);
-          setSettings((prev) => ({ ...prev, template_bg: compressedDataUrl }));
+          setSettings((prev) => ({
+            ...prev,
+            template_bg: compressedDataUrl,
+            orientation: detectedOrientation,
+          }));
           playSuccess();
         };
         img.src = event.target.result;
@@ -156,12 +230,40 @@ function CertificateStudioPanel() {
     setSaveLoading(true);
     setSaveMessage(null);
     try {
-      await updateCertSettings(settings);
-      playSuccess();
-      setSaveMessage({
-        type: 'success',
-        text: 'Pengaturan template & tautan Google Drive berhasil tersimpan di Cloud Firebase (koleksi: cert_settings) dan penyimpanan lokal!'
-      });
+      if (targetWorkshopId === 'global') {
+        await updateCertSettings(settings);
+        setGlobalSettings(settings);
+        playSuccess();
+        setSaveMessage({
+          type: 'success',
+          text: 'Pengaturan Template Umum Lab berhasil tersimpan di Cloud Firebase (koleksi: cert_settings) dan penyimpanan lokal!'
+        });
+      } else {
+        const payload = {
+          cert_bg: settings.template_bg,
+          cert_layout: {
+            top: settings.top,
+            left: settings.left,
+            fontSize: settings.fontSize,
+            fontFamily: settings.fontFamily,
+            color: settings.color,
+            fontWeight: settings.fontWeight,
+            underline: settings.underline,
+            orientation: settings.orientation || 'landscape',
+          },
+          drive_folder_url: settings.drive_folder_url || '',
+          drive_webhook_url: settings.drive_webhook_url || '',
+        };
+        await updateWorkshop(targetWorkshopId, payload);
+        const wsList = await getAllWorkshops();
+        setWorkshops(wsList);
+        const ws = wsList.find((w) => String(w.id) === String(targetWorkshopId));
+        playSuccess();
+        setSaveMessage({
+          type: 'success',
+          text: `Template sertifikat khusus untuk kegiatan "${ws?.title || 'Workshop'}" berhasil disimpan!`
+        });
+      }
       setTimeout(() => setSaveMessage(null), 5000);
     } catch (err) {
       playError();
@@ -393,18 +495,72 @@ function doGet(e) {
         </div>
       )}
 
+      {/* Target Pelatihan / Workshop Selector */}
+      <div className="bento-card rounded-2xl p-4 sm:p-5 border-2 border-purple-200/90 bg-gradient-to-r from-purple-50/70 via-indigo-50/40 to-white flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm">
+        <div className="space-y-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <Award className="text-purple-600 shrink-0" size={18} />
+            <h3 className="font-bold text-slate-900 text-sm sm:text-base">Target Pengaturan Sertifikat</h3>
+            {targetWorkshopId === 'global' ? (
+              <span className="text-[10px] bg-purple-100 text-purple-800 font-bold px-2.5 py-0.5 rounded-full border border-purple-200">
+                🌐 Template Umum Lab (Default)
+              </span>
+            ) : (
+              <span className="text-[10px] bg-amber-100 text-amber-900 font-bold px-2.5 py-0.5 rounded-full border border-amber-200">
+                🎯 Khusus Workshop: {workshops.find((w) => String(w.id) === String(targetWorkshopId))?.title}
+              </span>
+            )}
+          </div>
+          <p className="text-xs text-slate-500 leading-relaxed">
+            {targetWorkshopId === 'global'
+              ? 'Template sertifikat standar lab. Setiap pelatihan yang belum memiliki template gambar khusus akan otomatis menggunakan template ini.'
+              : 'Mengatur gambar template & posisi nama khusus untuk workshop ini. Peserta yang hadir di kegiatan ini akan otomatis mendapatkan sertifikat khusus ini.'}
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0 flex-wrap">
+          <select
+            value={targetWorkshopId}
+            onChange={(e) => handleSwitchTarget(e.target.value)}
+            className="px-3.5 py-2.5 rounded-xl border-2 border-purple-300 text-xs font-bold text-slate-800 bg-white shadow-xs focus:ring-2 focus:ring-purple-400 focus:outline-none max-w-xs truncate cursor-pointer"
+          >
+            <option value="global">🌐 Template Umum Lab (Default)</option>
+            {workshops.map((w) => (
+              <option key={w.id} value={w.id}>
+                🎯 {w.title} {w.cert_bg ? '★ (Khusus)' : ''}
+              </option>
+            ))}
+          </select>
+
+          {targetWorkshopId !== 'global' && workshops.find((w) => String(w.id) === String(targetWorkshopId))?.cert_bg && (
+            <button
+              type="button"
+              onClick={handleResetWorkshopToDefault}
+              className="px-3 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:text-rose-600 bg-white hover:bg-rose-50 border border-slate-200 hover:border-rose-200 transition-colors cursor-pointer"
+              title="Hapus template kustom dan kembali ikuti template umum lab"
+            >
+              Reset ke Default
+            </button>
+          )}
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
         {/* Left Column: Form Controls */}
         <form onSubmit={handleSave} className="xl:col-span-6 space-y-5">
           {/* 1. Template Background */}
-          <div className="bento-card rounded-2xl p-4 sm:p-5 border border-purple-200 space-y-3">
+          <div className="bento-card rounded-2xl p-4 sm:p-5 border border-purple-200 space-y-3.5">
             <div className="flex items-center justify-between flex-wrap gap-2">
               <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
                 <Upload size={15} className="text-purple-600" />
                 1. Template Desain Sertifikat (Gambar)
               </h3>
-              <span className="text-[10px] text-purple-700 bg-purple-50 font-bold px-2 py-0.5 rounded-md border border-purple-200">
-                Otomatis
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${
+                settings.orientation === 'portrait'
+                  ? 'bg-amber-50 text-amber-800 border-amber-200'
+                  : 'bg-purple-50 text-purple-700 border border-purple-200'
+              }`}>
+                {settings.orientation === 'portrait' ? '📄 Portrait (Tegak)' : '📜 Landscape (Mendatar)'}
               </span>
             </div>
             <p className="text-xs text-slate-500 leading-relaxed">
@@ -426,11 +582,40 @@ function doGet(e) {
               {/* Template Presets */}
               <button
                 type="button"
-                onClick={() => setSettings((s) => ({ ...s, template_bg: '/img/cert-template.jpg' }))}
+                onClick={() => setSettings((s) => ({ ...s, template_bg: '/img/cert-template.jpg', orientation: 'landscape' }))}
                 className="px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors"
               >
-                Template Gold Standar
+                Template Gold Standar (Landscape)
               </button>
+            </div>
+
+            {/* Pilihan Orientasi Manual */}
+            <div className="pt-2 border-t border-purple-100 flex items-center justify-between gap-3 flex-wrap">
+              <span className="text-xs font-bold text-slate-700">Orientasi Dokumen PDF:</span>
+              <div className="inline-flex rounded-xl p-1 bg-slate-100 border border-slate-200 gap-1">
+                <button
+                  type="button"
+                  onClick={() => setSettings((s) => ({ ...s, orientation: 'landscape' }))}
+                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                    settings.orientation !== 'portrait'
+                      ? 'bg-white text-purple-700 shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  📜 Landscape (Mendatar)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSettings((s) => ({ ...s, orientation: 'portrait' }))}
+                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                    settings.orientation === 'portrait'
+                      ? 'bg-white text-purple-700 shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  📄 Portrait (Tegak)
+                </button>
+              </div>
             </div>
           </div>
 
@@ -731,15 +916,40 @@ function doGet(e) {
 
 
 
-            {/* Manual Name Input Tester */}
-            <div className="mb-4">
+            {/* Manual Name Input Tester with Quick Presets */}
+            <div className="mb-4 space-y-2">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <label className="text-xs font-bold text-slate-700">Nama Contoh untuk Uji Pratinjau:</label>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => { playClick(); setSampleName('Ahmad Rizky Pratama, S.Pd.'); }}
+                    className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
+                  >
+                    Nama Standar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { playClick(); setSampleName('Prof. Dr. H. Muhammad Fathurrahman Al-Makassari, S.Pd.I., M.Pd.I., Ph.D.'); }}
+                    className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 transition-colors cursor-pointer"
+                    title="Uji coba auto-scaling nama panjang"
+                  >
+                    ⭐ Coba Nama Panjang
+                  </button>
+                </div>
+              </div>
               <input
                 type="text"
                 value={sampleName}
                 onChange={(e) => setSampleName(e.target.value)}
                 placeholder="Ketik nama untuk mencoba..."
-                className="w-full px-3 py-2 rounded-xl border border-purple-200 text-xs font-medium bg-white"
+                className="w-full px-3 py-2 rounded-xl border border-purple-200 text-xs font-medium bg-white focus:outline-none focus:border-purple-600"
               />
+              {sampleName.length > 28 && (
+                <p className="text-[11px] text-amber-700 font-bold flex items-center gap-1">
+                  ✨ <strong>Auto-Scaling Aktif:</strong> Font otomatis mengecil proporsional agar nama panjang tetap muat 1 baris estetis.
+                </p>
+              )}
             </div>
 
             {/* The Visual Certificate Canvas (Interactive Click-to-Place!) */}
@@ -747,7 +957,10 @@ function doGet(e) {
               ref={canvasRef}
               onClick={handleCanvasClick}
               title="Klik di sini untuk langsung memindahkan posisi nama!"
-              className="relative rounded-2xl overflow-hidden shadow-xl border-2 border-purple-300 bg-slate-900 select-none cursor-crosshair group"
+              className="relative rounded-2xl overflow-hidden shadow-xl border-2 border-purple-300 bg-slate-900 select-none cursor-crosshair group mx-auto"
+              style={{
+                maxWidth: settings.orientation === 'portrait' ? '420px' : '100%',
+              }}
             >
               <img
                 src={settings.template_bg}
@@ -762,29 +975,41 @@ function doGet(e) {
                 </span>
               </div>
 
-              {/* OVERLAID PARTICIPANT NAME */}
-              <div
-                className="absolute pointer-events-none transform -translate-x-1/2 -translate-y-1/2 text-center transition-all duration-100"
-                style={{
-                  top: `${settings.top}%`,
-                  left: `${settings.left}%`,
-                  fontSize: `clamp(14px, 2.8vw, ${settings.fontSize}px)`,
-                  fontFamily: settings.fontFamily,
-                  color: settings.color,
-                  fontWeight: settings.fontWeight,
-                  textDecoration: settings.underline ? 'underline' : 'none',
-                  textShadow: '0 1px 2px rgba(255,255,255,0.7)',
-                  maxWidth: '85%',
-                  lineHeight: '1.2',
-                }}
-              >
-                {sampleName}
-              </div>
+              {/* OVERLAID PARTICIPANT NAME WITH SOLUSI 1 AUTO-SCALING PREVIEW */}
+              {(() => {
+                const isLong = sampleName.length > 26;
+                const lengthRatio = isLong ? Math.max(0.60, 26 / sampleName.length) : 1;
+                const previewFontSize = Math.round(settings.fontSize * lengthRatio);
+
+                return (
+                  <div
+                    className="absolute pointer-events-none transform -translate-x-1/2 -translate-y-1/2 text-center transition-all duration-100"
+                    style={{
+                      top: `${settings.top}%`,
+                      left: `${settings.left}%`,
+                      fontSize: `clamp(11px, ${2.8 * lengthRatio}vw, ${previewFontSize}px)`,
+                      fontFamily: settings.fontFamily,
+                      color: settings.color,
+                      fontWeight: settings.fontWeight,
+                      textDecoration: settings.underline ? 'underline' : 'none',
+                      textShadow: '0 1px 2px rgba(255,255,255,0.7)',
+                      maxWidth: '82%',
+                      whiteSpace: 'nowrap',
+                      lineHeight: '1.2',
+                    }}
+                  >
+                    {sampleName}
+                  </div>
+                );
+              })()}
             </div>
 
             <div className="mt-4 pt-3 border-t border-purple-100 flex items-center justify-between text-xs text-slate-500 flex-wrap gap-2">
-              <span className="font-mono">Posisi Aktif: X: <strong>{settings.left}%</strong> • Y: <strong>{settings.top}%</strong></span>
-              <span className="font-mono">Ukuran Huruf: <strong>{settings.fontSize}px</strong></span>
+              <span className="font-mono">Posisi: X: <strong>{settings.left}%</strong> • Y: <strong>{settings.top}%</strong></span>
+              <span className="font-mono">Ukuran: <strong>{settings.fontSize}px</strong></span>
+              <span className="font-mono font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-md border border-purple-200">
+                {settings.orientation === 'portrait' ? '📄 Portrait (Tegak)' : '📜 Landscape (Mendatar)'}
+              </span>
             </div>
           </div>
         </div>

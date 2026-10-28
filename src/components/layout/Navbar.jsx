@@ -3,17 +3,18 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Menu, X, Award, User, BookOpen, Newspaper, Images, Info,
-  Home, ChevronRight, Sparkles, Shield, LogOut, Search
+  Home, ChevronRight, Sparkles, Shield, LogOut, Search, ClipboardCheck
 } from 'lucide-react';
 import { playClick } from '../../utils/audio';
 import { getCurrentUser, clearCurrentUser } from '../../store/dataStore';
 
 const NAV_LINKS = [
   { to: '/', label: 'Beranda', icon: Home, exact: true },
-  { to: '/presensi', label: 'Presensi & Sertifikat', icon: Award, highlight: true },
+  { to: '/pendaftaran', label: 'Pendaftaran', icon: ClipboardCheck },
+  { to: '/presensi', label: 'Presensi', icon: Award, highlight: true },
   { to: '/berita', label: 'Berita', icon: Newspaper },
   { to: '/galeri', label: 'Galeri', icon: Images },
-  { to: '/tentang', label: 'Tentang Kami', icon: Info },
+  { to: '/tentang', label: 'Tentang', icon: Info },
 ];
 
 export default function Navbar() {
@@ -124,16 +125,6 @@ export default function Navbar() {
 
           {/* Right Action Buttons */}
           <div className="flex items-center gap-2">
-            {/* Quick Action Button for Tablets and Desktops */}
-            <NavLink
-              to="/presensi"
-              onClick={handleNavClick}
-              className="btn-shimmer hidden md:inline-flex items-center gap-1.5 px-3.5 sm:px-4 py-2 rounded-full text-xs font-bold text-white bg-gradient-to-r from-purple-600 via-violet-600 to-indigo-600 shadow-md shadow-purple-600/25 no-underline"
-            >
-              <Award size={13} />
-              <span>Isi Presensi</span>
-            </NavLink>
-
             {/* User / Admin Authentication State */}
             {user ? (
               <div className="flex items-center gap-1.5">
@@ -141,7 +132,7 @@ export default function Navbar() {
                   <NavLink
                     to="/admin"
                     onClick={handleNavClick}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 sm:py-2 rounded-full text-xs font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 no-underline transition-all"
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 sm:py-2 rounded-full text-xs font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 no-underline transition-all"
                   >
                     <User size={13} />
                     <span className="hidden sm:inline">Admin</span>
@@ -149,7 +140,7 @@ export default function Navbar() {
                 )}
                 <button
                   onClick={handleLogout}
-                  className="hidden sm:inline-flex items-center gap-1 px-3 py-1.5 sm:py-2 rounded-full text-xs font-semibold text-slate-600 bg-white hover:bg-red-50 hover:text-red-600 border border-slate-200 transition-all"
+                  className="hidden sm:inline-flex items-center gap-1 px-3 py-1.5 sm:py-2 rounded-full text-xs font-semibold text-slate-600 bg-white hover:bg-red-50 hover:text-red-600 border border-slate-200 transition-all cursor-pointer"
                 >
                   <LogOut size={12} />
                   <span>Keluar</span>
@@ -159,7 +150,7 @@ export default function Navbar() {
               <NavLink
                 to="/login"
                 onClick={handleNavClick}
-                className="inline-flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-full text-xs font-bold text-slate-700 bg-white hover:bg-purple-50 hover:text-purple-700 border border-slate-200 shadow-xs no-underline transition-all"
+                className="inline-flex items-center gap-1.5 px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs font-bold text-slate-700 bg-white hover:bg-purple-50 hover:text-purple-700 border border-slate-200 shadow-xs no-underline transition-all"
               >
                 <User size={13} />
                 <span className="hidden sm:inline">Admin</span>
@@ -257,26 +248,14 @@ export default function Navbar() {
                 ))}
               </div>
 
-              {/* Highlight Action Card */}
-              <div className="mt-4 p-4 rounded-2xl bg-gradient-to-br from-purple-900 to-indigo-950 text-white relative overflow-hidden">
-                <div className="relative z-10">
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-purple-300 mb-1">
-                    <Sparkles size={12} />
-                    <span>Layanan Mandiri</span>
-                  </div>
-                  <p className="text-xs text-slate-200 mb-3 leading-relaxed">
-                    Klaim dan cetak langsung E-Sertifikat resmi kegiatan praktikum & workshop Anda.
-                  </p>
-                  <div className="flex gap-2">
-                    <NavLink
-                      to="/presensi"
-                      onClick={handleNavClick}
-                      className="btn-shimmer flex-1 py-2 px-3 rounded-xl bg-white text-slate-900 text-xs font-bold text-center no-underline inline-flex items-center justify-center gap-1.5 shadow-md"
-                    >
-                      <Award size={13} className="text-purple-700" />
-                      Presensi Sekarang
-                    </NavLink>
-                  </div>
+              {/* Info Lab FTK UINAM */}
+              <div className="mt-4 p-3.5 rounded-2xl bg-gradient-to-r from-purple-50 via-indigo-50 to-purple-50 border border-purple-100 flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-purple-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                  <Sparkles size={14} className="text-amber-300" />
+                </div>
+                <div className="text-xs">
+                  <p className="font-bold text-slate-800 leading-tight">Portal Digital Lab Microleading</p>
+                  <p className="text-[11px] text-purple-700 leading-tight mt-0.5">Manajemen Pendidikan Islam FTK UINAM</p>
                 </div>
               </div>
 
@@ -328,23 +307,35 @@ export default function Navbar() {
             end
             onClick={handleNavClick}
             className={({ isActive }) =>
-              `flex flex-col items-center justify-center py-1 px-2.5 rounded-xl transition-all no-underline ${isActive ? 'text-purple-700 font-bold bg-purple-50' : 'text-slate-500 hover:text-purple-600'
+              `flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all no-underline ${isActive ? 'text-purple-700 font-bold bg-purple-50' : 'text-slate-500 hover:text-purple-600'
               }`
             }
           >
-            <Home size={18} />
+            <Home size={17} />
             <span className="text-[10px] mt-0.5">Beranda</span>
+          </NavLink>
+
+          <NavLink
+            to="/pendaftaran"
+            onClick={handleNavClick}
+            className={({ isActive }) =>
+              `flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all no-underline ${isActive ? 'text-purple-700 font-bold bg-purple-50' : 'text-slate-500 hover:text-purple-600'
+              }`
+            }
+          >
+            <ClipboardCheck size={17} />
+            <span className="text-[10px] mt-0.5">Daftar</span>
           </NavLink>
 
           <NavLink
             to="/presensi"
             onClick={handleNavClick}
             className={({ isActive }) =>
-              `flex flex-col items-center justify-center py-1 px-2.5 rounded-xl transition-all no-underline relative ${isActive ? 'text-purple-700 font-bold bg-purple-50' : 'text-slate-500 hover:text-purple-600'
+              `flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all no-underline relative ${isActive ? 'text-purple-700 font-bold bg-purple-50' : 'text-slate-500 hover:text-purple-600'
               }`
             }
           >
-            <Award size={18} className="text-purple-600" />
+            <Award size={17} className="text-purple-600" />
             <span className="text-[10px] mt-0.5">Presensi</span>
             <span className="absolute top-1 right-2 w-1.5 h-1.5 bg-purple-500 rounded-full animate-ping" />
           </NavLink>
@@ -353,11 +344,11 @@ export default function Navbar() {
             to="/berita"
             onClick={handleNavClick}
             className={({ isActive }) =>
-              `flex flex-col items-center justify-center py-1 px-2.5 rounded-xl transition-all no-underline ${isActive ? 'text-purple-700 font-bold bg-purple-50' : 'text-slate-500 hover:text-purple-600'
+              `flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all no-underline ${isActive ? 'text-purple-700 font-bold bg-purple-50' : 'text-slate-500 hover:text-purple-600'
               }`
             }
           >
-            <Newspaper size={18} />
+            <Newspaper size={17} />
             <span className="text-[10px] mt-0.5">Berita</span>
           </NavLink>
 

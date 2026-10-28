@@ -42,10 +42,10 @@ export function showAlert(options, type = 'warning', title = '') {
       };
     } else {
       config = {
-        title: options.title || (options.type === 'error' ? 'Terjadi Kesalahan' : options.type === 'success' ? 'Berhasil' : 'Perhatian'),
-        message: options.message || '',
-        type: options.type || 'warning',
-        confirmText: options.confirmText || 'Mengerti',
+        title: options?.title || (options?.type === 'error' ? 'Terjadi Kesalahan' : options?.type === 'success' ? 'Berhasil' : 'Perhatian'),
+        message: options?.message || options?.text || '',
+        type: options?.type || type || 'warning',
+        confirmText: options?.confirmText || 'Mengerti',
         isConfirm: false,
       };
     }
@@ -54,6 +54,7 @@ export function showAlert(options, type = 'warning', title = '') {
       kind: 'dialog',
       data: {
         ...config,
+        message: typeof config.message === 'string' ? config.message : (config.message?.text || config.message?.message || String(config.message || '')),
         resolve: () => {
           resolve(true);
         },
@@ -83,11 +84,11 @@ export function showConfirm(options, type = 'danger', title = '') {
       };
     } else {
       config = {
-        title: options.title || (options.type === 'danger' ? 'Konfirmasi Hapus' : 'Konfirmasi'),
-        message: options.message || '',
-        type: options.type || 'danger',
-        confirmText: options.confirmText || (options.type === 'danger' ? 'Ya, Hapus' : 'Lanjutkan'),
-        cancelText: options.cancelText || 'Batal',
+        title: options?.title || (options?.type === 'danger' ? 'Konfirmasi Hapus' : 'Konfirmasi'),
+        message: options?.message || options?.text || '',
+        type: options?.type || type || 'danger',
+        confirmText: options?.confirmText || (options?.type === 'danger' ? 'Ya, Hapus' : 'Lanjutkan'),
+        cancelText: options?.cancelText || 'Batal',
         isConfirm: true,
       };
     }
@@ -96,6 +97,7 @@ export function showConfirm(options, type = 'danger', title = '') {
       kind: 'dialog',
       data: {
         ...config,
+        message: typeof config.message === 'string' ? config.message : (config.message?.text || config.message?.message || String(config.message || '')),
         resolve: (val) => {
           resolve(Boolean(val));
         },
@@ -106,18 +108,36 @@ export function showConfirm(options, type = 'danger', title = '') {
 
 /**
  * Show a modern floating toast notification
- * @param {string} message
+ * Supports both signatures:
+ *   showToast('Pesan berhasil', 'success')
+ *   showToast({ text: 'Pesan berhasil', type: 'success' })
+ *   showToast({ message: 'Pesan berhasil', type: 'success' })
+ * @param {string|object} messageOrOptions
  * @param {'success'|'error'|'warning'|'info'} [type='success']
  * @param {number} [duration=3500]
  */
-export function showToast(message, type = 'success', duration = 3500) {
+export function showToast(messageOrOptions, type = 'success', duration = 3500) {
+  let text = '';
+  let toastType = type || 'success';
+  let toastDuration = duration || 3500;
+
+  if (typeof messageOrOptions === 'string') {
+    text = messageOrOptions;
+  } else if (messageOrOptions && typeof messageOrOptions === 'object') {
+    text = messageOrOptions.text || messageOrOptions.message || messageOrOptions.title || '';
+    if (messageOrOptions.type) toastType = messageOrOptions.type;
+    if (messageOrOptions.duration) toastDuration = messageOrOptions.duration;
+  } else {
+    text = String(messageOrOptions || '');
+  }
+
   emit({
     kind: 'toast',
     data: {
       id: Date.now() + Math.random(),
-      message,
-      type,
-      duration,
+      message: String(text || ''),
+      type: toastType,
+      duration: toastDuration,
     },
   });
 }
@@ -320,7 +340,9 @@ export default function CoolAlertContainer() {
                 {dialog.title}
               </h3>
               <p className="text-slate-600 text-xs sm:text-sm leading-relaxed mb-6 whitespace-pre-line px-1">
-                {dialog.message}
+                {typeof dialog.message === 'string'
+                  ? dialog.message
+                  : (dialog.message?.text || dialog.message?.message || JSON.stringify(dialog.message || ''))}
               </p>
 
               {/* Action Buttons */}
@@ -365,7 +387,9 @@ export default function CoolAlertContainer() {
             >
               <div className="mt-0.5">{getToastIcon(toast.type)}</div>
               <p className="text-xs sm:text-sm font-semibold text-slate-800 flex-1 leading-snug">
-                {toast.message}
+                {typeof toast.message === 'string'
+                  ? toast.message
+                  : (toast.message?.text || toast.message?.message || JSON.stringify(toast.message || ''))}
               </p>
               <button
                 onClick={() => setToasts((prev) => prev.filter((t) => t.id !== toast.id))}

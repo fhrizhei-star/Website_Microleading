@@ -3,6 +3,7 @@ import { Award, MapPin, Phone, Mail, Globe } from 'lucide-react';
 
 const FOOTER_LINKS = [
   { to: '/', label: 'Beranda' },
+  { to: '/pendaftaran', label: 'Pendaftaran Workshop' },
   { to: '/presensi', label: 'Presensi & Sertifikat' },
   { to: '/berita', label: 'Berita Terkini' },
   { to: '/galeri', label: 'Galeri' },

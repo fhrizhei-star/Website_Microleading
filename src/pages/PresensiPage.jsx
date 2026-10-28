@@ -10,11 +10,11 @@ import {
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { jsPDF } from 'jspdf';
-import { getWorkshops, getAttendance, submitAttendance } from '../store/dataStore';
+import { getAllWorkshops, getWorkshops, getAttendance, submitAttendance, findRegistrationByNimOrCode } from '../store/dataStore';
 import GoogleDriveIcon from '../components/common/GoogleDriveIcon';
 import PageTransition, { SectionReveal, StaggerContainer, StaggerItem } from '../components/transitions/PageTransition';
 import { playClick, playSuccess, playError } from '../utils/audio';
-import { showAlert } from '../components/common/CoolAlert';
+import { showAlert, showToast } from '../components/common/CoolAlert';
 
 // ========================
 // Tab Switcher
@@ -94,13 +94,19 @@ function WorkshopCard({ workshop, onSelect }) {
         </div>
       </div>
 
-      <button
-        onClick={() => { playClick(); onSelect(workshop); }}
-        className="btn-shimmer relative z-10 w-full py-3 rounded-2xl font-bold text-xs text-white bg-gradient-to-r from-purple-600 via-violet-600 to-indigo-600 shadow-md shadow-purple-600/25 hover:shadow-lg hover:shadow-purple-600/40 hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2"
-      >
-        <Award size={13} />
-        <span>Pilih & Isi Presensi Ini</span>
-      </button>
+      {isOpen ? (
+        <button
+          onClick={() => { playClick(); onSelect(workshop); }}
+          className="btn-shimmer relative z-10 w-full py-3 rounded-2xl font-bold text-xs text-white bg-gradient-to-r from-purple-600 via-violet-600 to-indigo-600 shadow-md shadow-purple-600/25 hover:shadow-lg hover:shadow-purple-600/40 hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2 cursor-pointer"
+        >
+          <Award size={13} />
+          <span>Pilih & Isi Presensi Ini</span>
+        </button>
+      ) : (
+        <div className="relative z-10 w-full py-3 rounded-2xl font-bold text-xs text-slate-500 bg-slate-100 border border-slate-200 flex items-center justify-center gap-2">
+          <span>Pendaftaran Selesai / Ditutup</span>
+        </div>
+      )}
     </div>
   );
 }
@@ -558,7 +564,49 @@ function AttendanceForm({ workshops, selectedWorkshop, onGoToCek }) {
   const [banner, setBanner] = useState(null);
   const [successRecord, setSuccessRecord] = useState(null);
 
-  const fileInputRef = useRef(null);
+  const [fileInputRef] = [useRef(null)];
+  const [lookupQuery, setLookupQuery] = useState('');
+  const [lookupSuccess, setLookupSuccess] = useState(null);
+  const [isSearching, setIsSearching] = useState(false);
+
+  const handleAutoFillFromRegistration = async () => {
+    if (!lookupQuery.trim()) {
+      showToast('Ketik NIM atau Kode Registrasi terlebih dahulu', 'warning');
+      return;
+    }
+    playClick();
+    setIsSearching(true);
+    try {
+      const match = await findRegistrationByNimOrCode(lookupQuery, form.workshop_id || null);
+      if (match) {
+        setForm(f => ({
+          ...f,
+          workshop_id: match.workshop_id || f.workshop_id,
+          nama: match.nama || f.nama,
+          identitas: match.nim_nip || f.identitas,
+          instansi: match.instansi || f.instansi,
+          whatsapp: match.whatsapp || f.whatsapp,
+          email: match.email || f.email,
+        }));
+        if (match.workshop_id) {
+          handleWorkshopChange(match.workshop_id);
+        }
+        setLookupSuccess(match);
+        playSuccess();
+        showToast(`Data ${match.nama} ditemukan & diisi otomatis!`, 'success');
+      } else {
+        playError();
+        setLookupSuccess(null);
+        showAlert({
+          title: 'Data Belum Ditemukan',
+          message: `Tidak ditemukan pendaftaran dengan NIM / Kode "${lookupQuery}". Anda dapat melanjutkan dengan mengisi formulir presensi secara manual di bawah.`,
+          type: 'info'
+        });
+      }
+    } finally {
+      setIsSearching(false);
+    }
+  };
 
   useEffect(() => {
     if (selectedWorkshop) {
@@ -818,6 +866,63 @@ function AttendanceForm({ workshops, selectedWorkshop, onGoToCek }) {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-7">
+        {/* Quick Auto-Fill from Registration Box */}
+        <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-purple-100/90 via-indigo-50/80 to-purple-50/90 border-2 border-purple-300/80 shadow-md">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-purple-600 text-white flex items-center justify-center shadow-xs shrink-0">
+                <Sparkles size={16} />
+              </div>
+              <div>
+                <h4 className="font-bold text-slate-900 text-xs sm:text-sm">Sudah Mendaftar Workshop Sebelumnya?</h4>
+                <p className="text-[11px] text-slate-600">Ketik NIM atau Kode Registrasi Anda untuk mengisi formulir secara otomatis</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <input
+                type="text"
+                value={lookupQuery}
+                onChange={e => setLookupQuery(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAutoFillFromRegistration(); } }}
+                placeholder="Ketik NIM / No. Registrasi..."
+                className="px-3.5 py-2 rounded-xl border border-purple-300 text-xs bg-white text-slate-900 focus:outline-none focus:border-purple-600 flex-1 sm:w-56 font-mono"
+              />
+              <button
+                type="button"
+                onClick={handleAutoFillFromRegistration}
+                disabled={isSearching}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-purple-700 hover:bg-purple-800 transition-colors shadow-xs flex items-center gap-1.5 shrink-0 cursor-pointer disabled:opacity-50"
+              >
+                <Search size={13} />
+                <span>{isSearching ? 'Mencari...' : 'Auto-Fill'}</span>
+              </button>
+            </div>
+          </div>
+
+          {lookupSuccess && (
+            <motion.div
+              initial={{ opacity: 0, y: -5 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-3 p-2.5 rounded-xl bg-emerald-100/90 border border-emerald-300 text-emerald-900 text-xs flex items-center justify-between gap-2"
+            >
+              <div className="flex items-center gap-2 truncate">
+                <CheckCircle2 size={15} className="text-emerald-600 shrink-0" />
+                <span className="truncate">
+                  Terdaftar: <strong>{lookupSuccess.nama}</strong> ({lookupSuccess.reg_code}) - Data berhasil diisi otomatis.
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setLookupSuccess(null)}
+                className="text-[10px] text-emerald-700 font-bold hover:underline shrink-0"
+              >
+                Tutup
+              </button>
+            </motion.div>
+          )}
+        </div>
+
         {/* ============================================================ */}
         {/* SECTION 1: Pilih Workshop / Kegiatan (Modern Card Styling)   */}
         {/* ============================================================ */}
@@ -842,7 +947,7 @@ function AttendanceForm({ workshops, selectedWorkshop, onGoToCek }) {
               required
             >
               <option value="">-- Pilih Kegiatan yang Diikuti --</option>
-              {workshops.map(w => (
+              {workshops.filter(w => w.status === 'open').map(w => (
                 <option key={w.id} value={w.id}>
                   {w.title} ({w.date})
                 </option>
@@ -1305,7 +1410,7 @@ export default function PresensiPage() {
   const [selectedWorkshop, setSelectedWorkshop] = useState(null);
 
   useEffect(() => {
-    getWorkshops().then((data) => {
+    getAllWorkshops().then((data) => {
       const list = data || [];
       setWorkshops(list);
       if (workshopParam && list.length > 0) {

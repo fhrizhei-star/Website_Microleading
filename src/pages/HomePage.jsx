@@ -3,9 +3,10 @@ import { NavLink } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   Award, Calendar, Users, Star, ChevronRight, FileText,
-  Search, BookOpen, Zap, Shield, Clock, MapPin, Sparkles, ArrowRight
+  Search, BookOpen, Zap, Shield, Clock, MapPin, Sparkles, ArrowRight,
+  ClipboardCheck
 } from 'lucide-react';
-import { getWorkshops, getNews, getGallery } from '../store/dataStore';
+import { getAllWorkshops, getNews, getGallery, getAttendance } from '../store/dataStore';
 import {
   HeroSection,
   TrustMarquee,
@@ -18,23 +19,41 @@ import {
 import PageTransition, { SectionReveal } from '../components/transitions/PageTransition';
 import { playClick } from '../utils/audio';
 
+function formatIndoDate(dateStr) {
+  if (!dateStr) return '';
+  try {
+    const d = new Date(dateStr.includes('T') ? dateStr : `${dateStr}T00:00:00`);
+    if (isNaN(d.getTime())) return dateStr;
+    return d.toLocaleDateString('id-ID', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    });
+  } catch {
+    return dateStr;
+  }
+}
+
 export default function HomePage() {
   const [workshops, setWorkshops] = useState([]);
   const [news, setNews] = useState([]);
   const [gallery, setGallery] = useState([]);
+  const [attendanceCount, setAttendanceCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function loadData() {
       try {
-        const [wData, nData, gData] = await Promise.all([
-          getWorkshops(),
+        const [wData, nData, gData, aData] = await Promise.all([
+          getAllWorkshops(),
           getNews(),
           getGallery(),
+          getAttendance(),
         ]);
         setWorkshops(wData || []);
         setNews(nData || []);
         setGallery(gData || []);
+        setAttendanceCount(aData ? aData.length : 0);
       } catch (err) {
         console.error('Error loading home data:', err);
       } finally {
@@ -54,7 +73,7 @@ export default function HomePage() {
         <TrustMarquee />
 
         {/* 3. Count Up Stats */}
-        <StatsSection />
+        <StatsSection workshopCount={workshops.length} participantCount={attendanceCount} />
 
         {/* 4. Keunggulan / Core Values */}
         <KeunggulanSection />
@@ -67,17 +86,17 @@ export default function HomePage() {
                 <div>
                   <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-100 border border-purple-200 text-purple-800 text-xs font-bold mb-3">
                     <Calendar size={13} className="text-purple-600" />
-                    AGENDA KEGIATAN ILMIAH
+                    AGENDA WORKSHOP & PELATIHAN
                   </div>
                   <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 font-display">
-                    Workshop & Praktikum <span className="gradient-text">Terbuka</span>
+                    Workshop & Pelatihan <span className="gradient-text">Laboratorium</span>
                   </h2>
                   <p className="text-slate-600 text-sm sm:text-base mt-2 max-w-xl">
                     Ikuti kegiatan workshop penulisan karya ilmiah, riset modern, dan pelatihan kepemimpinan untuk mendapatkan E-Sertifikat resmi.
                   </p>
                 </div>
                 <NavLink
-                  to="/presensi"
+                  to="/presensi?tab=jadwal"
                   onClick={playClick}
                   className="inline-flex items-center gap-2 text-sm font-bold text-purple-700 hover:text-purple-900 bg-purple-50 hover:bg-purple-100 px-5 py-2.5 rounded-full border border-purple-200 transition-all self-start md:self-auto no-underline"
                 >
@@ -100,60 +119,92 @@ export default function HomePage() {
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {workshops.map((w, idx) => (
-                  <motion.div
-                    key={w.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.4, delay: idx * 0.1 }}
-                    className="bento-card rounded-3xl p-6 flex flex-col justify-between border border-purple-200/60 shadow-sm"
-                  >
-                    <div>
-                      <div className="flex items-center justify-between gap-2 mb-4">
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-purple-100 text-purple-800 border border-purple-200">
-                          <Clock size={11} />
-                          {w.status === 'open' ? 'Pendaftaran / Presensi Dibuka' : 'Selesai'}
-                        </span>
-                        <span className="text-xs font-semibold text-slate-400">#{w.id}</span>
+                {workshops.map((w, idx) => {
+                  const isOpen = w.status === 'open';
+                  return (
+                    <motion.div
+                      key={w.id || idx}
+                      initial={{ opacity: 0, y: 20 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      viewport={{ once: true }}
+                      transition={{ duration: 0.4, delay: idx * 0.1 }}
+                      className="bento-card rounded-3xl p-6 flex flex-col justify-between border border-purple-200/60 shadow-sm hover:border-purple-300 hover:shadow-md transition-all group"
+                    >
+                      <div>
+                        <div className="flex items-center justify-between gap-2 mb-4">
+                          <span
+                            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold border ${
+                              isOpen
+                                ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
+                                : 'bg-slate-100 text-slate-600 border-slate-200'
+                            }`}
+                          >
+                            <span className={`w-2 h-2 rounded-full ${isOpen ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`} />
+                            {isOpen ? '● Pendaftaran Dibuka' : '○ Pendaftaran Ditutup'}
+                          </span>
+                          <span className="text-[11px] font-semibold text-purple-700 bg-purple-50 border border-purple-100 px-2.5 py-0.5 rounded-full">
+                            E-Sertifikat
+                          </span>
+                        </div>
+
+                        <h3 className="font-bold text-slate-900 text-lg mb-2 line-clamp-2 leading-snug group-hover:text-purple-700 transition-colors">
+                          {w.title}
+                        </h3>
+
+                        <p className="text-xs text-slate-600 line-clamp-3 mb-5 leading-relaxed">
+                          {w.description}
+                        </p>
+
+                        <div className="space-y-2 text-xs text-slate-600 border-t border-purple-100/80 pt-4 mb-6">
+                          <div className="flex items-center gap-2">
+                            <Users size={13} className="text-purple-600 shrink-0" />
+                            <span className="font-medium text-slate-800">{w.speaker}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Calendar size={13} className="text-purple-600 shrink-0" />
+                            <span>{formatIndoDate(w.date)} • {w.time}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <MapPin size={13} className="text-rose-500 shrink-0" />
+                            <span className="truncate">{w.location || 'Lab Microleading MPI FTK UINAM'}</span>
+                          </div>
+                        </div>
                       </div>
 
-                      <h3 className="font-bold text-slate-900 text-lg mb-2 line-clamp-2 leading-snug">
-                        {w.title}
-                      </h3>
-
-                      <p className="text-xs text-slate-600 line-clamp-3 mb-5 leading-relaxed">
-                        {w.description}
-                      </p>
-
-                      <div className="space-y-2 text-xs text-slate-600 border-t border-purple-100/80 pt-4 mb-6">
-                        <div className="flex items-center gap-2">
-                          <Users size={13} className="text-purple-600 shrink-0" />
-                          <span className="font-medium text-slate-800">{w.speaker}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Calendar size={13} className="text-purple-600 shrink-0" />
-                          <span>{w.date} • {w.time}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <MapPin size={13} className="text-purple-600 shrink-0" />
-                          <span className="truncate">{w.location}</span>
-                        </div>
+                      <div className="flex items-center gap-2 pt-2 border-t border-purple-100/60">
+                        {isOpen ? (
+                          <>
+                            <NavLink
+                              to={`/pendaftaran?workshop=${w.id}`}
+                              onClick={playClick}
+                              className="btn-shimmer flex-1 py-2.5 px-3 rounded-xl text-center text-xs font-bold text-white bg-gradient-to-r from-purple-600 to-indigo-600 shadow-md shadow-purple-600/20 hover:scale-[1.02] active:scale-[0.98] transition-all no-underline inline-flex items-center justify-center gap-1.5 cursor-pointer"
+                            >
+                              <ClipboardCheck size={13} />
+                              Daftar
+                            </NavLink>
+                            <NavLink
+                              to={`/presensi?workshop=${w.id}`}
+                              onClick={playClick}
+                              className="py-2.5 px-3 rounded-xl text-center text-xs font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 hover:scale-[1.02] active:scale-[0.98] transition-all no-underline inline-flex items-center justify-center gap-1.5 cursor-pointer"
+                            >
+                              <Award size={13} />
+                              Presensi
+                            </NavLink>
+                          </>
+                        ) : (
+                          <NavLink
+                            to="/presensi?tab=cek"
+                            onClick={playClick}
+                            className="flex-1 py-2.5 px-4 rounded-xl text-center text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 transition-all no-underline inline-flex items-center justify-center gap-1.5 cursor-pointer"
+                          >
+                            <Search size={13} />
+                            Cek E-Sertifikat
+                          </NavLink>
+                        )}
                       </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 pt-2">
-                      <NavLink
-                        to="/presensi"
-                        onClick={playClick}
-                        className="btn-shimmer flex-1 py-2.5 px-4 rounded-xl text-center text-xs font-bold text-white bg-gradient-to-r from-purple-600 to-indigo-600 shadow-md shadow-purple-600/20 no-underline inline-flex items-center justify-center gap-1.5"
-                      >
-                        <Award size={13} />
-                        Presensi & Sertifikat
-                      </NavLink>
-                    </div>
-                  </motion.div>
-                ))}
+                    </motion.div>
+                  );
+                })}
               </div>
             )}
           </div>

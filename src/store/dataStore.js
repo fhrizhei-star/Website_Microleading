@@ -23,6 +23,7 @@ import { db, isFirebaseConfigured, firebaseConfig } from '../firebase';
 // ========================
 const DEFAULT_WORKSHOPS = [
   {
+    id: "ws_1",
     title: "Workshop Penulisan Karya Tulis Ilmiah & Publikasi Jurnal Nasional",
     speaker: "Dr. H. Muhammad Ilyas, M.Pd.",
     date: "2026-10-26",
@@ -34,6 +35,7 @@ const DEFAULT_WORKSHOPS = [
     cert_layout: null,
   },
   {
+    id: "ws_2",
     title: "Pelatihan Public Speaking & Leadership Santri Modern",
     speaker: "Ustadz Rahmat Hidayat, M.I.Kom.",
     date: "2026-10-28",
@@ -45,6 +47,7 @@ const DEFAULT_WORKSHOPS = [
     cert_layout: null,
   },
   {
+    id: "ws_3",
     title: "Workshop Pemanfaatan AI & Media Digital dalam Pembelajaran Islam",
     speaker: "Fahri Pratama, S.Kom., M.T.",
     date: "2026-10-30",
@@ -60,7 +63,7 @@ const DEFAULT_WORKSHOPS = [
 const DEFAULT_ATTENDANCE = [
   {
     id: "attn_1",
-    workshop_id: 1,
+    workshop_id: "ws_1",
     workshop_title: "Workshop Penulisan Karya Tulis Ilmiah & Publikasi Jurnal Nasional",
     speaker: "Dr. H. Muhammad Ilyas, M.Pd.",
     workshop_date: "2026-10-26",
@@ -83,6 +86,66 @@ const DEFAULT_ATTENDANCE = [
     },
     drive_url: "https://drive.google.com/drive/folders/1EXAMPLE_DRIVE_FOLDER_ID",
     timestamp: new Date(Date.now() - 3600000).toISOString(),
+  },
+];
+
+const DEFAULT_REGISTRATIONS = [
+  {
+    id: "reg_1",
+    reg_code: "REG-MPI-2026-0001",
+    workshop_id: "ws_1",
+    workshop_title: "Workshop Penulisan Karya Tulis Ilmiah & Publikasi Jurnal Nasional",
+    workshop_date: "2026-10-26",
+    workshop_time: "08:30 - 12:00 WITA",
+    workshop_location: "Laboratorium Microleading MPI",
+    speaker: "Dr. H. Muhammad Ilyas, M.Pd.",
+    nama: "Ahmad Rizky Pratama, S.Pd.",
+    nim_nip: "20400121045",
+    instansi: "UIN Alauddin Makassar",
+    email: "ahmad.rizky@gmail.com",
+    whatsapp: "081234567890",
+    alasan: "Memperdalam sitasi Mendeley dan kiat tembus jurnal SINTA untuk persiapan skripsi.",
+    status: "terkonfirmasi",
+    is_attended: true,
+    registered_at: new Date(Date.now() - 86400000 * 3).toISOString(),
+  },
+  {
+    id: "reg_2",
+    reg_code: "REG-MPI-2026-0002",
+    workshop_id: "ws_2",
+    workshop_title: "Pelatihan Public Speaking & Leadership Santri Modern",
+    workshop_date: "2026-10-28",
+    workshop_time: "09:00 - 12:00 WITA",
+    workshop_location: "Aula FTK Kampus II UINAM",
+    speaker: "Ustadz Rahmat Hidayat, M.I.Kom.",
+    nama: "Siti Nurhaliza, S.Pd.",
+    nim_nip: "20400121046",
+    instansi: "UIN Alauddin Makassar",
+    email: "siti.nurhaliza@gmail.com",
+    whatsapp: "082198765432",
+    alasan: "Melatih kepercayaan diri dalam berbicara di depan umum dan kepemimpinan kelas.",
+    status: "terkonfirmasi",
+    is_attended: false,
+    registered_at: new Date(Date.now() - 86400000 * 2).toISOString(),
+  },
+  {
+    id: "reg_3",
+    reg_code: "REG-MPI-2026-0003",
+    workshop_id: "ws_3",
+    workshop_title: "Workshop Pemanfaatan AI & Media Digital dalam Pembelajaran Islam",
+    workshop_date: "2026-10-30",
+    workshop_time: "08:30 - 11:30 WITA",
+    workshop_location: "Lab Komputer & Multimedia MPI",
+    speaker: "Fahri Pratama, S.Kom., M.T.",
+    nama: "Muh. Farhan Alamsyah",
+    nim_nip: "20400121048",
+    instansi: "Universitas Negeri Makassar",
+    email: "farhan.alamsyah@gmail.com",
+    whatsapp: "085211223344",
+    alasan: "Tertarik mempelajari implementasi AI secara etis dalam media pembelajaran interaktif.",
+    status: "terkonfirmasi",
+    is_attended: false,
+    registered_at: new Date(Date.now() - 86400000).toISOString(),
   },
 ];
 
@@ -236,6 +299,14 @@ async function syncFirestoreSeeds() {
         created_at: new Date().toISOString()
       });
     }
+
+    const regSnap = await getDocs(collection(db, 'registrations'));
+    if (regSnap.empty) {
+      console.log('🌱 [Firebase] Seeding data awal registrations...');
+      for (const r of DEFAULT_REGISTRATIONS) {
+        await setDoc(doc(db, 'registrations', r.id), r);
+      }
+    }
   } catch (err) {
     isSeeding = false;
     console.warn('ℹ️ [Firebase] Info status Firestore (pastikan rule di console sudah Test Mode):', err.message);
@@ -246,6 +317,7 @@ async function syncFirestoreSeeds() {
 export function initializeStore() {
   initStorage("mpi_workshops", DEFAULT_WORKSHOPS);
   initStorage("mpi_attendance", DEFAULT_ATTENDANCE);
+  initStorage("mpi_registrations", DEFAULT_REGISTRATIONS);
   initStorage("mpi_news", DEFAULT_NEWS);
   initStorage("mpi_gallery", DEFAULT_GALLERY);
   initStorage("mpi_courses", DEFAULT_COURSES);
@@ -262,22 +334,6 @@ export function initializeStore() {
 // ========================
 // WORKSHOPS
 // ========================
-export async function getWorkshops() {
-  if (isFirebaseConfigured && db) {
-    try {
-      const q = query(collection(db, 'workshops'), where('status', '==', 'open'));
-      const snap = await getDocs(q);
-      if (!snap.empty) {
-        return snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      }
-    } catch (err) {
-      console.warn('⚠️ [Firestore] getWorkshops error:', err.message);
-    }
-  }
-  await delay();
-  return getStore("mpi_workshops").filter(w => w.status === "open");
-}
-
 export async function getAllWorkshops() {
   if (isFirebaseConfigured && db) {
     try {
@@ -292,7 +348,14 @@ export async function getAllWorkshops() {
     }
   }
   await delay();
-  return getStore("mpi_workshops");
+  const rawList = getStore("mpi_workshops") || [];
+  const list = rawList.map((w, idx) => ({ ...w, id: w.id || `ws_${idx + 1}` }));
+  return list;
+}
+
+export async function getWorkshops() {
+  const all = await getAllWorkshops();
+  return all.filter(w => w.status === 'open');
 }
 
 export async function createWorkshop(data) {
@@ -424,6 +487,10 @@ export async function submitAttendance(data) {
       const docRef = await addDoc(collection(db, 'attendance'), newRecord);
       const created = { ...newRecord, id: docRef.id };
       setStore("mpi_attendance", [created, ...records]);
+      // Connect with registration if matching NIM exists
+      findRegistrationByNimOrCode(data.identitas, data.workshop_id).then(match => {
+        if (match) updateRegistrationStatus(match.id, 'hadir', true);
+      }).catch(() => {});
       return created;
     } catch (err) {
       console.warn('⚠️ [Firestore] submitAttendance error:', err.message);
@@ -432,6 +499,10 @@ export async function submitAttendance(data) {
 
   const localRecord = { ...newRecord, id: `attn_${Date.now()}` };
   setStore("mpi_attendance", [localRecord, ...records]);
+  // Connect with registration if matching NIM exists
+  findRegistrationByNimOrCode(data.identitas, data.workshop_id).then(match => {
+    if (match) updateRegistrationStatus(match.id, 'hadir', true);
+  }).catch(() => {});
   return localRecord;
 }
 
@@ -463,6 +534,148 @@ export async function updateAttendanceDriveUrl(id, drive_url) {
   );
   setStore("mpi_attendance", records);
   return true;
+}
+
+// ========================
+// REGISTRATIONS (PENDAFTARAN)
+// ========================
+export async function getRegistrations(workshopId = "") {
+  let list = [];
+  if (isFirebaseConfigured && db) {
+    try {
+      const q = query(collection(db, 'registrations'), orderBy('registered_at', 'desc'));
+      const snap = await getDocs(q);
+      if (!snap.empty) {
+        list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        setStore("mpi_registrations", list);
+      }
+    } catch (err) {
+      console.warn('⚠️ [Firestore] getRegistrations error:', err.message);
+    }
+  }
+
+  if (list.length === 0) {
+    await delay();
+    list = getStore("mpi_registrations") || [];
+  }
+
+  if (!Array.isArray(list)) list = [];
+
+  // Ensure every item is a valid object with an id and valid code
+  list = list.filter(Boolean).map((r, i) => ({
+    ...r,
+    id: r.id || `reg_${i + 1}`,
+    reg_code: r.reg_code || `REG-MPI-2026-${String(i + 1).padStart(4, '0')}`
+  }));
+
+  if (workshopId && workshopId !== 'all') {
+    return list.filter(r => r && String(r.workshop_id) === String(workshopId));
+  }
+  return list;
+}
+
+export async function submitRegistration(data) {
+  await delay(50);
+  const existingList = await getRegistrations();
+  const workshops = await getAllWorkshops();
+  const workshop = workshops.find(w => String(w.id) === String(data.workshop_id));
+
+  // Anti-duplikasi check: satu NIM hanya bisa mendaftar 1 kali per workshop
+  const cleanNim = (data.nim_nip || '').trim().toLowerCase();
+  const alreadyRegistered = existingList.find(
+    r => String(r.workshop_id) === String(data.workshop_id) &&
+         (r.nim_nip || '').trim().toLowerCase() === cleanNim
+  );
+
+  if (alreadyRegistered) {
+    const err = new Error(`NIM/Identitas "${data.nim_nip}" sudah terdaftar pada kegiatan "${workshop?.title || 'Workshop ini'}" dengan Kode Registrasi: ${alreadyRegistered.reg_code}.`);
+    err.alreadyRegistered = alreadyRegistered;
+    throw err;
+  }
+
+  const regCode = `REG-MPI-${new Date().getFullYear()}-${String(existingList.length + 1).padStart(4, "0")}`;
+  const newRegistration = {
+    reg_code: regCode,
+    workshop_id: data.workshop_id,
+    workshop_title: workshop?.title || "Workshop Lab Microleading",
+    workshop_date: workshop?.date || new Date().toISOString().split("T")[0],
+    workshop_time: workshop?.time || "08:30 - 12:00 WITA",
+    workshop_location: workshop?.location || "Lab Microleading MPI FTK UINAM",
+    speaker: workshop?.speaker || "Pemateri Lab Microleading",
+    nama: data.nama,
+    nim_nip: data.nim_nip,
+    instansi: data.instansi || "UIN Alauddin Makassar",
+    email: data.email || "",
+    whatsapp: data.whatsapp || "",
+    alasan: data.alasan || "",
+    status: data.status || "terkonfirmasi",
+    is_attended: false,
+    registered_at: new Date().toISOString()
+  };
+
+  if (isFirebaseConfigured && db) {
+    try {
+      const docRef = await addDoc(collection(db, 'registrations'), newRegistration);
+      const created = { ...newRegistration, id: docRef.id };
+      setStore("mpi_registrations", [created, ...existingList]);
+      return created;
+    } catch (err) {
+      console.warn('⚠️ [Firestore] submitRegistration error, using local fallback:', err.message);
+    }
+  }
+
+  const localReg = { ...newRegistration, id: `reg_${Date.now()}` };
+  setStore("mpi_registrations", [localReg, ...existingList]);
+  return localReg;
+}
+
+export async function updateRegistrationStatus(id, status, is_attended = null) {
+  const updateData = { status };
+  if (is_attended !== null) {
+    updateData.is_attended = is_attended;
+  }
+  if (isFirebaseConfigured && db) {
+    try {
+      await updateDoc(doc(db, 'registrations', String(id)), updateData);
+    } catch (err) {
+      console.warn('⚠️ [Firestore] updateRegistrationStatus error:', err.message);
+    }
+  }
+  await delay();
+  const list = (getStore("mpi_registrations") || []).map(r =>
+    String(r.id) === String(id) ? { ...r, ...updateData } : r
+  );
+  setStore("mpi_registrations", list);
+  return true;
+}
+
+export async function deleteRegistration(id) {
+  if (isFirebaseConfigured && db) {
+    try {
+      await deleteDoc(doc(db, 'registrations', String(id)));
+    } catch (err) {
+      console.warn('⚠️ [Firestore] deleteRegistration error:', err.message);
+    }
+  }
+  await delay();
+  const list = (getStore("mpi_registrations") || []).filter(r => String(r.id) !== String(id));
+  setStore("mpi_registrations", list);
+  return true;
+}
+
+export async function findRegistrationByNimOrCode(queryStr, workshopId = null) {
+  if (!queryStr) return null;
+  const list = await getRegistrations();
+  const q = queryStr.trim().toLowerCase();
+
+  return list.find(r => {
+    const matchesWorkshop = !workshopId || String(r.workshop_id) === String(workshopId);
+    const matchesQuery = (r.nim_nip || '').toLowerCase() === q ||
+                         (r.reg_code || '').toLowerCase() === q ||
+                         (r.email || '').toLowerCase() === q ||
+                         (r.whatsapp || '').replace(/[^0-9]/g, '').endsWith(q.replace(/[^0-9]/g, ''));
+    return matchesWorkshop && matchesQuery;
+  }) || null;
 }
 
 // ========================

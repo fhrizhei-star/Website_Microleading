@@ -6,7 +6,8 @@ import { useCountUp } from '../ambient/AmbientEffects';
 import { SectionReveal, StaggerContainer, StaggerItem } from '../transitions/PageTransition';
 import {
   Award, Calendar, Users, Star, ChevronRight, FileText,
-  Search, BookOpen, Zap, Shield, Clock, MapPin, X, Share2, Check
+  Search, BookOpen, Zap, Shield, Clock, MapPin, X, Share2, Check,
+  ClipboardCheck
 } from 'lucide-react';
 import { playClick } from '../../utils/audio';
 
@@ -30,10 +31,14 @@ function StatCard({ value, label, sublabel, decimals = 0, suffix = '' }) {
 // Hero Section
 // ========================
 export function HeroSection({ workshops = [] }) {
-  const [activeWorkshop, setActiveWorkshop] = useState(workshops[0] || null);
+  const [activeWorkshop, setActiveWorkshop] = useState(
+    workshops.find((w) => w.status === 'open') || workshops[0] || null
+  );
 
   useEffect(() => {
-    if (workshops.length > 0) setActiveWorkshop(workshops[0]);
+    if (workshops.length > 0) {
+      setActiveWorkshop(workshops.find((w) => w.status === 'open') || workshops[0]);
+    }
   }, [workshops]);
 
   return (
@@ -64,20 +69,28 @@ export function HeroSection({ workshops = [] }) {
 
             <div className="flex flex-wrap gap-3 mb-10">
               <Link
-                to="/presensi"
+                to="/pendaftaran"
                 onClick={playClick}
                 className="btn-shimmer inline-flex items-center gap-2 px-6 py-3 rounded-full text-sm font-bold text-white bg-gradient-to-r from-purple-600 via-violet-600 to-indigo-600 shadow-lg shadow-purple-600/30 no-underline hover:scale-105 active:scale-95 transition-all cursor-pointer"
               >
+                <ClipboardCheck size={15} />
+                Daftar Workshop
+              </Link>
+              <Link
+                to="/presensi"
+                onClick={playClick}
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-full text-sm font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 shadow-sm hover:scale-105 active:scale-95 transition-all no-underline cursor-pointer"
+              >
                 <Award size={15} />
-                Isi Presensi & Klaim Sertifikat
+                Isi Presensi & Klaim
               </Link>
               <Link
                 to="/presensi?tab=cek"
                 onClick={playClick}
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-full text-sm font-bold text-slate-800 bg-white border border-slate-200 shadow-sm hover:border-purple-300 hover:text-purple-700 hover:scale-105 active:scale-95 transition-all no-underline cursor-pointer"
+                className="inline-flex items-center gap-2 px-5 py-3 rounded-full text-sm font-bold text-slate-700 bg-white border border-slate-200 shadow-sm hover:border-purple-300 hover:text-purple-700 hover:scale-105 active:scale-95 transition-all no-underline cursor-pointer"
               >
                 <Search size={15} />
-                Cari E-Sertifikat Saya
+                Cari E-Sertifikat
               </Link>
             </div>
 
@@ -135,11 +148,15 @@ export function HeroSection({ workshops = [] }) {
 
               <div className="flex items-center justify-between mb-5">
                 <div className="flex items-center gap-2.5">
-                  <span className="w-2.5 h-2.5 rounded-full bg-purple-500 animate-pulse" />
-                  <span className="text-xs font-extrabold text-slate-800 uppercase tracking-wider">Workshop Terkini</span>
+                  <span className={`w-2.5 h-2.5 rounded-full ${activeWorkshop?.status === 'open' ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`} />
+                  <span className="text-xs font-extrabold text-slate-800 uppercase tracking-wider">Workshop & Pelatihan</span>
                 </div>
-                <span className="px-2.5 py-1 rounded-full bg-purple-100 text-purple-900 text-[11px] font-bold">
-                  Presensi Aktif
+                <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold ${
+                  activeWorkshop?.status === 'open'
+                    ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                    : 'bg-slate-100 text-slate-600 border border-slate-200'
+                }`}>
+                  {activeWorkshop?.status === 'open' ? 'Presensi Aktif' : 'Pendaftaran Ditutup'}
                 </span>
               </div>
 
@@ -147,24 +164,41 @@ export function HeroSection({ workshops = [] }) {
                 <div className="p-5 rounded-2xl bg-gradient-to-br from-slate-900 via-purple-950 to-slate-900 text-white shadow-lg mb-5 relative overflow-hidden border border-purple-900/50">
                   <div className="flex justify-between items-start mb-3">
                     <span className="text-[11px] font-bold text-purple-400 tracking-wider uppercase">
-                      Pelatihan Akademik
+                      Workshop & Pelatihan Lab
                     </span>
-                    <span className="text-xs font-mono text-purple-300">2026</span>
+                    <span className="text-xs font-mono text-purple-300">
+                      {activeWorkshop.date ? new Date(activeWorkshop.date.includes('T') ? activeWorkshop.date : `${activeWorkshop.date}T00:00:00`).getFullYear() || '2026' : '2026'}
+                    </span>
                   </div>
                   <h3 className="text-lg font-bold font-display text-white mb-2 leading-snug">
                     {activeWorkshop.title}
                   </h3>
-                  <p className="text-xs text-purple-200/80 mb-4 leading-relaxed line-clamp-2">
+                  <p className="text-xs text-purple-200/80 mb-3.5 leading-relaxed line-clamp-2">
                     {activeWorkshop.description}
                   </p>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1.5 text-xs text-slate-300">
-                      <Users size={11} className="text-purple-400" />
-                      <span className="truncate max-w-[160px]">{activeWorkshop.speaker}</span>
+
+                  <div className="space-y-1.5 text-xs text-purple-200/90 border-t border-purple-800/50 pt-3 mb-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <Users size={12} className="text-purple-400 shrink-0" />
+                        <span className="truncate max-w-[180px] font-medium">{activeWorkshop.speaker}</span>
+                      </div>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-600 text-white shrink-0">
+                        E-Sertifikat
+                      </span>
                     </div>
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-600 text-white">
-                      E-Sertifikat
-                    </span>
+                    {activeWorkshop.date && (
+                      <div className="flex items-center gap-1.5 text-[11px] text-purple-300/90">
+                        <Calendar size={11} className="text-purple-400 shrink-0" />
+                        <span>{activeWorkshop.date} {activeWorkshop.time ? `• ${activeWorkshop.time}` : ''}</span>
+                      </div>
+                    )}
+                    {activeWorkshop.location && (
+                      <div className="flex items-center gap-1.5 text-[11px] text-purple-300/90">
+                        <MapPin size={11} className="text-rose-400 shrink-0" />
+                        <span className="truncate">{activeWorkshop.location}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               ) : (
@@ -173,14 +207,35 @@ export function HeroSection({ workshops = [] }) {
                 </div>
               )}
 
-              <Link
-                to={activeWorkshop ? `/presensi?workshop=${activeWorkshop.id}` : '/presensi'}
-                onClick={playClick}
-                className="btn-shimmer w-full py-3 rounded-2xl font-bold text-sm text-white bg-gradient-to-r from-purple-600 via-violet-600 to-indigo-600 shadow-lg shadow-purple-600/30 flex items-center justify-center gap-2 no-underline hover:opacity-95 active:scale-[0.99] transition-all cursor-pointer"
-              >
-                <FileText size={15} />
-                Buka Formulir Kehadiran
-              </Link>
+              {activeWorkshop?.status === 'open' ? (
+                <div className="flex gap-2">
+                  <Link
+                    to={`/pendaftaran?workshop=${activeWorkshop.id}`}
+                    onClick={playClick}
+                    className="btn-shimmer flex-1 py-3 rounded-2xl font-bold text-sm text-white bg-gradient-to-r from-purple-600 via-violet-600 to-indigo-600 shadow-lg shadow-purple-600/30 flex items-center justify-center gap-2 no-underline hover:opacity-95 active:scale-[0.99] transition-all cursor-pointer"
+                  >
+                    <ClipboardCheck size={15} />
+                    Daftar Workshop
+                  </Link>
+                  <Link
+                    to={`/presensi?workshop=${activeWorkshop.id}`}
+                    onClick={playClick}
+                    className="py-3 px-4 rounded-2xl font-bold text-sm text-purple-300 bg-purple-900/60 hover:bg-purple-900/90 border border-purple-700/60 flex items-center justify-center gap-2 no-underline transition-all cursor-pointer"
+                  >
+                    <Award size={15} />
+                    Presensi
+                  </Link>
+                </div>
+              ) : (
+                <Link
+                  to="/presensi?tab=jadwal"
+                  onClick={playClick}
+                  className="btn-shimmer w-full py-3 rounded-2xl font-bold text-sm text-white bg-gradient-to-r from-purple-600 via-violet-600 to-indigo-600 shadow-lg shadow-purple-600/30 flex items-center justify-center gap-2 no-underline hover:opacity-95 active:scale-[0.99] transition-all cursor-pointer"
+                >
+                  <FileText size={15} />
+                  Lihat Jadwal Workshop
+                </Link>
+              )}
             </div>
 
             {/* Live Validation Tag */}
@@ -225,15 +280,18 @@ export function TrustMarquee() {
 // ========================
 // Stats Section
 // ========================
-export function StatsSection() {
+export function StatsSection({ workshopCount = 0, participantCount = 0 }) {
+  const displayWs = workshopCount > 0 ? workshopCount : 30;
+  const displayPart = participantCount > 0 ? participantCount : 500;
+
   return (
     <SectionReveal>
       <section className="py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-            <StatCard value={500} label="Peserta Terdata" sublabel="Mahasiswa & Dosen" suffix="+" />
+            <StatCard value={displayPart} label="Peserta Terdata" sublabel="Mahasiswa & Dosen" suffix="+" />
             <StatCard value={100} label="E-Sertifikat Digital" sublabel="Otomatis & Terverifikasi" suffix="%" />
-            <StatCard value={30} label="Workshop Ilmiah" sublabel="Diselenggarakan Lab" suffix="+" />
+            <StatCard value={displayWs} label="Workshop & Pelatihan" sublabel="Diselenggarakan Lab" suffix={workshopCount > 0 ? "" : "+"} />
             <StatCard value={4.9} label="Indeks Kepuasan" sublabel="Evaluasi Praktikum" decimals={1} suffix="/5" />
           </div>
         </div>

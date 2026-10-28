@@ -9,7 +9,8 @@ import {
   CheckCircle, ArrowRight, Wand2, MousePointer, Share2,
   UserPlus, GraduationCap, TrendingUp, Activity, Star,
   Bell, BarChart2, PieChart, ChevronLeft, ChevronRight,
-  BookOpen, Shield, Layers, Target, Cpu, Globe, KeyRound, Lock
+  BookOpen, Shield, Layers, Target, Cpu, Globe, KeyRound, Lock,
+  ClipboardCheck
 } from 'lucide-react';
 import {
   getAllWorkshops, getAttendance, getNews, getGallery, getMembers,
@@ -17,8 +18,10 @@ import {
   addGalleryItem, deleteGalleryItem,
   createMember, updateMember, deleteMember, saveMembersOrder,
   deleteAttendance, updateAttendanceDriveUrl, getCertSettings, updateCertSettings,
-  getCurrentUser, clearCurrentUser, getFirebaseStatus, changeAdminPassword
+  getCurrentUser, clearCurrentUser, getFirebaseStatus, changeAdminPassword,
+  getRegistrations, deleteRegistration, updateRegistrationStatus
 } from '../store/dataStore';
+import { exportStyledExcel, exportSingleRegistrationExcel } from '../utils/excelExport';
 import { useNavigate } from 'react-router-dom';
 import { playClick, playSuccess, playError } from '../utils/audio';
 import { showAlert, showConfirm, showToast } from '../components/common/CoolAlert';
@@ -28,6 +31,7 @@ const NAV_ITEMS = [
   { id: 'members', label: 'Team', icon: UserPlus },
   { id: 'calendar', label: 'Kalender', icon: Calendar },
   { id: 'workshops', label: 'Workshop', icon: BookOpen },
+  { id: 'registrations', label: 'Pendaftaran', icon: ClipboardCheck },
   { id: 'attendance', label: 'Presensi', icon: Users },
   { id: 'analytics', label: 'Analitik', icon: BarChart2 },
   { id: 'certificates', label: 'Sertifikat', icon: Award },
@@ -1375,6 +1379,343 @@ function WorkshopPanel() {
 }
 
 // ==========================================
+// 2.5 Registrations Management Panel
+// (With Official Formatted Excel Exporter)
+// ==========================================
+function RegistrationsPanel() {
+  const [registrations, setRegistrations] = useState([]);
+  const [workshops, setWorkshops] = useState([]);
+  const [selectedWorkshopId, setSelectedWorkshopId] = useState('all');
+  const [query, setQuery] = useState('');
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [loading, setLoading] = useState(true);
+
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const [regs, wsList] = await Promise.all([
+        getRegistrations(),
+        getAllWorkshops()
+      ]);
+      setRegistrations(regs || []);
+      setWorkshops(wsList || []);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { loadData(); }, []);
+
+  const handleDelete = async (id) => {
+    const ok = await showConfirm({
+      title: 'Hapus Data Pendaftaran?',
+      message: 'Data pendaftar ini akan dihapus permanen dari sistem.',
+      confirmText: 'Ya, Hapus Data',
+      type: 'danger'
+    });
+    if (!ok) return;
+    playClick();
+    await deleteRegistration(id);
+    loadData();
+    showToast('Data pendaftaran dihapus', 'info');
+  };
+
+  const handleToggleStatus = async (reg) => {
+    playClick();
+    const nextStatus = reg.status === 'terkonfirmasi' ? 'hadir' : (reg.status === 'hadir' ? 'menunggu' : 'terkonfirmasi');
+    const isAttended = nextStatus === 'hadir';
+    await updateRegistrationStatus(reg.id, nextStatus, isAttended);
+    loadData();
+    showToast(`Status diubah menjadi: ${nextStatus}`, 'success');
+  };
+
+  // Filtered registrations
+  const filtered = (registrations || []).filter(r => {
+    if (!r) return false;
+    const matchWorkshop = selectedWorkshopId === 'all' || String(r.workshop_id) === String(selectedWorkshopId);
+    const matchStatus = filterStatus === 'all' || r.status === filterStatus;
+    const q = (query || '').toLowerCase();
+    const matchQuery = !q ||
+      (r.nama || '').toLowerCase().includes(q) ||
+      (r.nim_nip || '').toLowerCase().includes(q) ||
+      (r.instansi || '').toLowerCase().includes(q) ||
+      (r.reg_code || '').toLowerCase().includes(q) ||
+      (r.email || '').toLowerCase().includes(q);
+    return matchWorkshop && matchStatus && matchQuery;
+  });
+
+  // Calculate statistics
+  const totalCount = filtered.length;
+  const attendedCount = filtered.filter(r => r.is_attended || r.status === 'hadir').length;
+  const attendanceRate = totalCount > 0 ? ((attendedCount / totalCount) * 100).toFixed(1) : '0';
+
+  // Export to Formatted Official Excel
+  const handleExportExcel = () => {
+    playClick();
+    if (filtered.length === 0) {
+      showAlert({
+        title: 'Tidak Ada Data',
+        message: 'Tidak ada data pendaftar yang sesuai untuk diekspor.',
+        type: 'warning'
+      });
+      return;
+    }
+
+    const currentWorkshop = workshops.find(w => String(w.id) === String(selectedWorkshopId));
+    const activityTitle = currentWorkshop ? currentWorkshop.title : 'Seluruh Kegiatan Workshop & Pelatihan';
+
+    const headers = [
+      'No',
+      'Kode Registrasi',
+      'NIM / NIP',
+      'Nama Lengkap',
+      'Asal Instansi',
+      'No. WhatsApp',
+      'Alamat Email',
+      'Judul Workshop',
+      'Status Pendaftaran',
+      'Kehadiran',
+      'Waktu Mendaftar'
+    ];
+
+    const rows = filtered.map((r, i) => [
+      i + 1,
+      r.reg_code || '-',
+      r.nim_nip || '-',
+      r.nama || '-',
+      r.instansi || '-',
+      r.whatsapp || '-',
+      r.email || '-',
+      r.workshop_title || '-',
+      r.status === 'terkonfirmasi' ? 'Terkonfirmasi' : (r.status === 'hadir' ? 'Hadir' : r.status || 'Terkonfirmasi'),
+      r.is_attended || r.status === 'hadir' ? 'Hadir' : 'Belum Hadir',
+      r.registered_at ? new Date(r.registered_at).toLocaleString('id-ID') : '-'
+    ]);
+
+    exportStyledExcel({
+      filename: `Rekap_Pendaftar_Workshop_MPI`,
+      title: 'LAPORAN REKAPITULASI PENDAFTARAN WORKSHOP & PELATIHAN AKADEMIK',
+      subtitle: 'Laboratorium Manajemen Pendidikan Islam (MPI) FTK UIN Alauddin Makassar',
+      activityName: activityTitle,
+      dateInfo: currentWorkshop ? `${currentWorkshop.date} (${currentWorkshop.time})` : 'Tahun Akademik 2026',
+      summaryStats: [
+        { label: 'TOTAL PENDAFTAR', value: `${totalCount} Orang`, sublabel: 'Calon Peserta Terdata' },
+        { label: 'SUDAH HADIR', value: `${attendedCount} Orang`, sublabel: 'Terverifikasi Presensi' },
+        { label: 'RASIO KEHADIRAN', value: `${attendanceRate}%`, sublabel: 'Pendaftar vs Kehadiran' }
+      ],
+      headers,
+      rows,
+      sheetName: 'Data Pendaftar'
+    });
+
+    playSuccess();
+    showToast('Laporan resmi Excel pendaftar berhasil diunduh!', 'success');
+  };
+
+  return (
+    <div className="space-y-5">
+      {/* Header and Action */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h2 className="font-display font-extrabold text-xl text-slate-900">Pendaftaran Workshop</h2>
+          <p className="text-xs text-slate-500">Kelola dan pantau seluruh data calon peserta yang mendaftar kegiatan workshop.</p>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            type="button"
+            onClick={handleExportExcel}
+            className="btn-shimmer inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-emerald-600 to-teal-700 shadow-md shadow-emerald-600/25 cursor-pointer"
+            title="Unduh laporan resmi Excel berformat rapi lengkap dengan kop surat dan statistik"
+          >
+            <Download size={14} />
+            <span>Ekspor Laporan Excel Resmi</span>
+          </button>
+        </div>
+      </div>
+
+      {/* 3 Overview Stat Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="bento-card rounded-2xl p-4 bg-gradient-to-br from-purple-500/10 via-white to-purple-50/30 border border-purple-200">
+          <span className="text-[11px] font-bold text-slate-500 uppercase">Total Pendaftar Terdata</span>
+          <p className="text-2xl font-extrabold text-purple-700 font-display mt-0.5">{totalCount} Peserta</p>
+          <p className="text-[10px] text-slate-400 mt-0.5">Sesuai filter pencarian</p>
+        </div>
+        <div className="bento-card rounded-2xl p-4 bg-gradient-to-br from-emerald-500/10 via-white to-emerald-50/30 border border-emerald-200">
+          <span className="text-[11px] font-bold text-slate-500 uppercase">Telah Hadir (Presensi)</span>
+          <p className="text-2xl font-extrabold text-emerald-700 font-display mt-0.5">{attendedCount} Orang</p>
+          <p className="text-[10px] text-slate-400 mt-0.5">Terverifikasi di hari H</p>
+        </div>
+        <div className="bento-card rounded-2xl p-4 bg-gradient-to-br from-indigo-500/10 via-white to-indigo-50/30 border border-indigo-200">
+          <span className="text-[11px] font-bold text-slate-500 uppercase">Tingkat Kehadiran (Attendance Rate)</span>
+          <p className="text-2xl font-extrabold text-indigo-700 font-display mt-0.5">{attendanceRate}%</p>
+          <p className="text-[10px] text-slate-400 mt-0.5">Rasio pendaftar yang hadir</p>
+        </div>
+      </div>
+
+      {/* Filter and Search Bar */}
+      <div className="bento-card rounded-2xl p-4 border border-purple-200 bg-white flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 flex-1">
+          {/* Workshop Filter */}
+          <select
+            value={selectedWorkshopId}
+            onChange={e => setSelectedWorkshopId(e.target.value)}
+            className="px-3 py-2 rounded-xl border border-purple-200 text-xs font-semibold text-slate-700 bg-purple-50/40 focus:outline-none focus:border-purple-600 max-w-xs cursor-pointer"
+          >
+            <option value="all">Semua Workshop ({workshops.length})</option>
+            {workshops.map(w => (
+              <option key={w.id} value={w.id}>{w.title}</option>
+            ))}
+          </select>
+
+          {/* Status Filter */}
+          <select
+            value={filterStatus}
+            onChange={e => setFilterStatus(e.target.value)}
+            className="px-3 py-2 rounded-xl border border-purple-200 text-xs font-semibold text-slate-700 bg-purple-50/40 focus:outline-none focus:border-purple-600 cursor-pointer"
+          >
+            <option value="all">Semua Status</option>
+            <option value="terkonfirmasi">Terkonfirmasi</option>
+            <option value="hadir">Sudah Hadir</option>
+            <option value="menunggu">Menunggu</option>
+          </select>
+        </div>
+
+        {/* Live Search */}
+        <div className="relative w-full sm:w-64">
+          <input
+            type="text"
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            placeholder="Cari Nama, NIM, No. Registrasi..."
+            className="w-full pl-9 pr-3.5 py-2 rounded-xl border border-purple-200 text-xs bg-white text-slate-900 focus:outline-none focus:border-purple-600 font-medium"
+          />
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-purple-400 pointer-events-none" />
+          {query && (
+            <button
+              onClick={() => setQuery('')}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs"
+            >
+              <X size={12} />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Table of Registered Participants */}
+      <div className="bento-card rounded-2xl border border-purple-200 bg-white overflow-hidden shadow-xs">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs">
+            <thead className="bg-purple-50/80 text-purple-950 font-bold uppercase text-[10px] tracking-wider border-b border-purple-200/80">
+              <tr>
+                <th className="py-3 px-3 text-center w-12">No</th>
+                <th className="py-3 px-3">Kode Reg</th>
+                <th className="py-3 px-3">Nama Lengkap</th>
+                <th className="py-3 px-3">NIM / NIP</th>
+                <th className="py-3 px-3">Instansi</th>
+                <th className="py-3 px-3">No. WhatsApp</th>
+                <th className="py-3 px-3">Workshop</th>
+                <th className="py-3 px-3 text-center">Status</th>
+                <th className="py-3 px-3 text-center">Kehadiran</th>
+                <th className="py-3 px-3 text-center w-20">Aksi</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-purple-100/70 text-slate-700">
+              {loading ? (
+                <tr>
+                  <td colSpan={10} className="py-8 text-center text-slate-400">
+                    Memuat data pendaftar...
+                  </td>
+                </tr>
+              ) : filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={10} className="py-10 text-center text-slate-400">
+                    <ClipboardCheck size={36} className="mx-auto text-purple-200 mb-2" />
+                    <p className="font-bold text-slate-600">Tidak ada data pendaftaran yang sesuai filter.</p>
+                  </td>
+                </tr>
+              ) : (
+                filtered.map((r, i) => (
+                  <tr key={r.id} className="hover:bg-purple-50/30 transition-colors">
+                    <td className="py-3 px-3 text-center font-bold text-slate-400">{i + 1}</td>
+                    <td className="py-3 px-3 font-mono font-bold text-purple-700 whitespace-nowrap">
+                      {r.reg_code}
+                    </td>
+                    <td className="py-3 px-3 font-bold text-slate-900">
+                      {r.nama}
+                      {r.email && <span className="block text-[10px] font-normal text-slate-400">{r.email}</span>}
+                    </td>
+                    <td className="py-3 px-3 font-mono text-slate-600 whitespace-nowrap">{r.nim_nip}</td>
+                    <td className="py-3 px-3 text-slate-600 max-w-[140px] truncate" title={r.instansi}>{r.instansi}</td>
+                    <td className="py-3 px-3 font-mono text-slate-600 whitespace-nowrap">{r.whatsapp || '-'}</td>
+                    <td className="py-3 px-3 max-w-[180px] truncate" title={r.workshop_title}>
+                      <span className="font-semibold text-slate-800">{r.workshop_title}</span>
+                      <span className="block text-[10px] text-slate-400">{r.workshop_date}</span>
+                    </td>
+                    <td className="py-3 px-3 text-center whitespace-nowrap">
+                      <button
+                        type="button"
+                        onClick={() => handleToggleStatus(r)}
+                        className={`px-2.5 py-1 rounded-full text-[10px] font-bold border transition-transform hover:scale-105 cursor-pointer ${
+                          r.status === 'terkonfirmasi'
+                            ? 'bg-blue-100 text-blue-800 border-blue-200'
+                            : (r.status === 'hadir'
+                               ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
+                               : 'bg-amber-100 text-amber-800 border-amber-200')
+                        }`}
+                        title="Klik untuk ubah status pendaftaran"
+                      >
+                        {r.status === 'terkonfirmasi' ? 'Terkonfirmasi' : (r.status === 'hadir' ? 'Hadir' : r.status || 'Terkonfirmasi')}
+                      </button>
+                    </td>
+                    <td className="py-3 px-3 text-center whitespace-nowrap">
+                      {r.is_attended || r.status === 'hadir' ? (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                          <CheckCircle2 size={11} /> Hadir
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-slate-400">Belum Presensi</span>
+                      )}
+                    </td>
+                    <td className="py-3 px-3 text-center whitespace-nowrap">
+                      <div className="flex items-center justify-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            playClick();
+                            exportSingleRegistrationExcel(r);
+                            showToast(`Laporan Excel ${r.nama} diunduh!`, 'success');
+                          }}
+                          className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 hover:text-emerald-800 transition-colors cursor-pointer"
+                          title="Unduh bukti laporan Excel resmi pendaftar ini"
+                        >
+                          <Download size={14} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(r.id)}
+                          className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 hover:text-rose-700 transition-colors cursor-pointer"
+                          title="Hapus data pendaftar"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+        <div className="p-3 bg-purple-50/40 border-t border-purple-100/80 text-[11px] text-slate-500 flex items-center justify-between">
+          <span>Menampilkan <strong>{filtered.length}</strong> dari {registrations.length} data pendaftar</span>
+          <span className="text-[10px] text-purple-700 font-semibold">Database Firestore & LocalStorage Sync</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ==========================================
 // 3. Attendance & Certificates Panel (Automated!)
 // (With CSV/Excel Exporter & Real-Time Sync)
 // ==========================================
@@ -1469,8 +1810,8 @@ function AttendancePanel() {
     return true;
   });
 
-  // Automated 1-Click: Export to Excel/CSV
-  const exportToCSV = () => {
+  // Automated 1-Click: Export to Formatted Official Excel
+  const exportAttendanceToExcel = () => {
     playClick();
     if (filteredRecords.length === 0) {
       showAlert({
@@ -1481,28 +1822,49 @@ function AttendancePanel() {
       return;
     }
 
-    const headers = ['No Sertifikat', 'Nama Lengkap', 'NIM / Identitas', 'Institusi', 'Workshop', 'Status Bukti', 'Link Google Drive', 'Waktu Presensi'];
-    const rows = filteredRecords.map(r => [
-      `"${r.cert_number || ''}"`,
-      `"${(r.nama || '').replace(/"/g, '""')}"`,
-      `"${r.identitas || ''}"`,
-      `"${(r.instansi || '').replace(/"/g, '""')}"`,
-      `"${(r.workshop_title || '').replace(/"/g, '""')}"`,
-      `"${r.bukti_file ? 'Ada Bukti' : 'Tidak Ada'}"`,
-      `"${r.drive_url || ''}"`,
-      `"${new Date(r.timestamp).toLocaleString('id-ID')}"`,
+    const headers = [
+      'No',
+      'No. Sertifikat',
+      'Nama Lengkap',
+      'NIM / Identitas',
+      'Asal Instansi',
+      'Kegiatan Workshop',
+      'Status Bukti Kehadiran',
+      'Tautan Google Drive',
+      'Waktu Presensi'
+    ];
+
+    const rows = filteredRecords.map((r, i) => [
+      i + 1,
+      r.cert_number || '-',
+      r.nama || '-',
+      r.identitas || '-',
+      r.instansi || '-',
+      r.workshop_title || '-',
+      r.bukti_file ? 'Ada Bukti' : 'Tidak Ada',
+      r.drive_url || '-',
+      r.timestamp ? new Date(r.timestamp).toLocaleString('id-ID') : '-'
     ]);
 
-    const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `Rekap_Presensi_Lab_MPI_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const withBukti = filteredRecords.filter(r => r.bukti_file).length;
+
+    exportStyledExcel({
+      filename: `Rekap_Presensi_Lab_MPI`,
+      title: 'LAPORAN REKAPITULASI PRESENSI & KELAYAKAN E-SERTIFIKAT DIGITAL',
+      subtitle: 'Laboratorium Manajemen Pendidikan Islam (MPI) FTK UIN Alauddin Makassar',
+      activityName: 'Rekapitulasi Kehadiran Peserta Workshop & Praktikum Lab',
+      summaryStats: [
+        { label: 'TOTAL KEHADIRAN', value: `${filteredRecords.length} Orang`, sublabel: 'Data Presensi Masuk' },
+        { label: 'BUKTI TERVERIFIKASI', value: `${withBukti} Peserta`, sublabel: 'Melampirkan Bukti Foto' },
+        { label: 'STATUS E-SERTIFIKAT', value: '100% Terbit', sublabel: 'Terverifikasi Digital' }
+      ],
+      headers,
+      rows,
+      sheetName: 'Rekap Presensi'
+    });
+
     playSuccess();
+    showToast('Laporan resmi Excel presensi berhasil diunduh!', 'success');
   };
 
   // Automated 1-Click: Copy summary to clipboard
@@ -1542,12 +1904,12 @@ function AttendancePanel() {
 
           <button
             type="button"
-            onClick={exportToCSV}
+            onClick={exportAttendanceToExcel}
             className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 border border-purple-200 shadow-xs cursor-pointer"
-            title="Unduh data presensi ke format Excel / CSV"
+            title="Unduh laporan resmi presensi berformat rapi lengkap dengan kop surat dan tabel"
           >
-            <Download size={13} className="text-purple-600" />
-            <span>Ekspor Excel/CSV</span>
+            <Download size={13} className="text-emerald-600" />
+            <span>Ekspor Laporan Excel</span>
           </button>
 
           <button
@@ -2718,7 +3080,7 @@ function ActivityBar({ label, value, max, color }) {
   );
 }
 
-function OverviewPanel({ workshops, records, news, gallery, onNavigate, members }) {
+function OverviewPanel({ workshops, records, news, gallery, onNavigate, members, registrations = [] }) {
   const withBuktiCount = records.filter(r => r.bukti_file).length;
   const fbStatus = getFirebaseStatus();
   const openWorkshops = workshops.filter(w => w.status === 'open');
@@ -2740,10 +3102,11 @@ function OverviewPanel({ workshops, records, news, gallery, onNavigate, members 
 
   // Quick actions
   const quickActions = [
-    { label: 'Kalender', icon: Calendar, color: 'from-purple-500 to-indigo-600', nav: 'calendar' },
-    { label: 'Team', icon: UserPlus, color: 'from-teal-500 to-emerald-600', nav: 'members' },
-    { label: 'Workshop', icon: BookOpen, color: 'from-indigo-500 to-blue-600', nav: 'workshops' },
+    { label: 'Pendaftaran', icon: ClipboardCheck, color: 'from-pink-500 to-rose-600', nav: 'registrations' },
     { label: 'Presensi', icon: Users, color: 'from-blue-500 to-cyan-600', nav: 'attendance' },
+    { label: 'Workshop', icon: BookOpen, color: 'from-indigo-500 to-blue-600', nav: 'workshops' },
+    { label: 'Team', icon: UserPlus, color: 'from-teal-500 to-emerald-600', nav: 'members' },
+    { label: 'Kalender', icon: Calendar, color: 'from-purple-500 to-indigo-600', nav: 'calendar' },
     { label: 'Analitik', icon: BarChart2, color: 'from-amber-500 to-orange-600', nav: 'analytics' },
     { label: 'Sertifikat', icon: Award, color: 'from-violet-500 to-purple-600', nav: 'certificates' },
   ];
@@ -2760,7 +3123,7 @@ function OverviewPanel({ workshops, records, news, gallery, onNavigate, members 
               <span className="text-xs font-bold text-purple-200 uppercase tracking-wider">Lab Microleading MPI · Admin Dashboard</span>
             </div>
             <h2 className="font-display font-extrabold text-xl sm:text-2xl leading-tight">Selamat Datang Kembali! 👋</h2>
-            <p className="text-purple-200 text-xs mt-1">Semua sistem aktif — {openWorkshops.length} workshop terbuka, {records.length} peserta terdata.</p>
+            <p className="text-purple-200 text-xs mt-1">Semua sistem aktif — {openWorkshops.length} workshop terbuka, {registrations.length} pendaftar, {records.length} presensi.</p>
           </div>
           <div className="flex flex-col items-end gap-2 shrink-0">
             <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold ${fbStatus.isConfigured ? 'bg-emerald-400/20 text-emerald-200 border border-emerald-400/30' : 'bg-amber-400/20 text-amber-200 border border-amber-400/30'}`}>
@@ -2776,15 +3139,15 @@ function OverviewPanel({ workshops, records, news, gallery, onNavigate, members 
         </div>
       </div>
 
-      {/* 6 Stat Cards */}
+      {/* Stat Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         {[
           { label: 'Workshop', value: workshops.length, icon: Calendar, color: 'bg-purple-600', nav: 'workshops' },
-          { label: 'Peserta', value: records.length, icon: Users, color: 'bg-indigo-600', nav: 'attendance' },
+          { label: 'Pendaftar', value: registrations.length, icon: ClipboardCheck, color: 'bg-pink-600', nav: 'registrations' },
+          { label: 'Presensi', value: records.length, icon: Users, color: 'bg-indigo-600', nav: 'attendance' },
           { label: 'Ada Bukti', value: withBuktiCount, icon: CheckCircle, color: 'bg-emerald-600', nav: 'attendance' },
           { label: 'Team', value: (members || []).length, icon: UserPlus, color: 'bg-teal-600', nav: 'members' },
           { label: 'Berita', value: news.length, icon: Newspaper, color: 'bg-violet-600', nav: 'news' },
-          { label: 'Galeri', value: gallery.length, icon: Images, color: 'bg-pink-600', nav: 'gallery' },
         ].map(s => (
           <StatCard key={s.label} label={s.label} value={s.value} icon={s.icon} color={s.color} onClick={() => onNavigate(s.nav)} />
         ))}
@@ -3274,32 +3637,37 @@ function AnalyticsPanel({ workshops = [], records = [] }) {
   const siangCount = workshops.filter(w => w.time?.includes('13') || w.time?.includes('14') || w.time?.includes('15') || w.time?.includes('16')).length;
   const malamCount = workshops.filter(w => w.time?.includes('19') || w.time?.includes('20')).length;
 
-  // Export report to CSV
-  const handleExportCSV = () => {
+  // Export report to Formatted Official Excel
+  const handleExportExcel = () => {
     playClick();
-    const rows = [
-      ['NO', 'JUDUL WORKSHOP', 'NARASUMBER', 'TANGGAL', 'STATUS', 'TOTAL PESERTA', 'BUKTI VALID'],
-      ...rankedWorkshops.map((w, i) => [
-        i + 1,
-        `"${w.title.replace(/"/g, '""')}"`,
-        `"${w.speaker.replace(/"/g, '""')}"`,
-        w.date,
-        w.status === 'open' ? 'Terbuka' : 'Ditutup',
-        w.count,
-        w.buktiCount
-      ])
-    ];
+    const headers = ['No', 'Judul Workshop', 'Narasumber', 'Tanggal Pelaksanaan', 'Status Kegiatan', 'Total Presensi', 'Bukti Valid'];
+    const rows = rankedWorkshops.map((w, i) => [
+      i + 1,
+      w.title,
+      w.speaker,
+      w.date,
+      w.status === 'open' ? 'Terbuka' : 'Ditutup',
+      w.count,
+      w.buktiCount
+    ]);
 
-    const csvContent = '\uFEFF' + rows.map(e => e.join(';')).join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', `Rekap_Analitik_Lab_MPI_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    showToast({ title: 'Laporan Siap', message: 'File rekap analitik berhasil diunduh.', type: 'success' });
+    exportStyledExcel({
+      filename: `Laporan_Analitik_Lab_MPI`,
+      title: 'LAPORAN REKAPITULASI ANALITIK KINERJA WORKSHOP & PARTISIPASI PESERTA',
+      subtitle: 'Laboratorium Manajemen Pendidikan Islam (MPI) FTK UIN Alauddin Makassar',
+      activityName: 'Evaluasi & Peringkat Workshop Ilmiah',
+      summaryStats: [
+        { label: 'TOTAL WORKSHOP', value: `${workshops.length}`, sublabel: `${openCount} Sesi Terbuka` },
+        { label: 'TOTAL PRESENSI', value: `${records.length} Orang`, sublabel: 'Akumulasi Mahasiswa' },
+        { label: 'RATA-RATA PESERTA', value: `${avgPerWorkshop}`, sublabel: 'Peserta / Workshop' },
+        { label: 'KELENGKAPAN BUKTI', value: `${buktiRatio}%`, sublabel: `${withBuktiCount} Berkas Valid` }
+      ],
+      headers,
+      rows,
+      sheetName: 'Analitik Kinerja'
+    });
+    playSuccess();
+    showToast('Laporan analitik resmi Excel berhasil diunduh!', 'success');
   };
 
   return (
@@ -3316,11 +3684,11 @@ function AnalyticsPanel({ workshops = [], records = [] }) {
           </p>
         </div>
         <button
-          onClick={handleExportCSV}
-          className="btn-shimmer inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-purple-600 to-indigo-600 shadow-md shadow-purple-600/25 cursor-pointer"
+          onClick={handleExportExcel}
+          className="btn-shimmer inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-emerald-600 to-teal-700 shadow-md shadow-emerald-600/25 cursor-pointer"
         >
           <Download size={15} />
-          <span>Unduh Rekap Laporan (.CSV)</span>
+          <span>Unduh Laporan Analitik Excel</span>
         </button>
       </div>
 
@@ -3487,7 +3855,7 @@ function SettingsPanel() {
     a.click();
     document.body.removeChild(a);
     playSuccess();
-    showToast({ title: 'Backup Berhasil', message: 'Seluruh data laboratorium tersimpan ke file JSON.', type: 'success' });
+    showToast('Seluruh data laboratorium tersimpan ke file JSON cadangan.', 'success');
   };
 
   const handleRestore = (e) => {
@@ -3532,7 +3900,7 @@ function SettingsPanel() {
     });
     if (!ok) return;
     playSuccess();
-    showToast({ title: 'Cache Dibersihkan', message: 'Sistem telah disegarkan ulang.', type: 'success' });
+    showToast('Cache dibersihkan, sistem disegarkan ulang.', 'success');
     setTimeout(() => window.location.reload(), 1000);
   };
 
@@ -3759,6 +4127,7 @@ export default function AdminPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [workshops, setWorkshops] = useState([]);
   const [records, setRecords] = useState([]);
+  const [registrations, setRegistrations] = useState([]);
   const [news, setNews] = useState([]);
   const [gallery, setGallery] = useState([]);
   const [members, setMembers] = useState(() => {
@@ -3769,12 +4138,13 @@ export default function AdminPage() {
   const user = getCurrentUser();
 
   const loadData = () => {
-    Promise.all([getAllWorkshops(), getAttendance(), getNews(), getGallery(), getMembers()]).then(([w, r, n, g, m]) => {
+    Promise.all([getAllWorkshops(), getAttendance(), getNews(), getGallery(), getMembers(), getRegistrations()]).then(([w, r, n, g, m, reg]) => {
       setWorkshops(w || []);
       setRecords(r || []);
       setNews(n || []);
       setGallery(g || []);
       setMembers(m || []);
+      setRegistrations(reg || []);
     });
   };
 
@@ -3794,11 +4164,16 @@ export default function AdminPage() {
         getGallery().then(data => { if (data) setGallery(data); });
       }
     };
+    const handleRegSync = () => {
+      getRegistrations().then(data => { if (data) setRegistrations(data); });
+    };
     window.addEventListener('mpi_members_updated', handleSync);
     window.addEventListener('mpi_gallery_updated', handleGallerySync);
+    window.addEventListener('mpi_registrations_updated', handleRegSync);
     return () => {
       window.removeEventListener('mpi_members_updated', handleSync);
       window.removeEventListener('mpi_gallery_updated', handleGallerySync);
+      window.removeEventListener('mpi_registrations_updated', handleRegSync);
     };
   }, []);
 
@@ -3925,12 +4300,14 @@ export default function AdminPage() {
                   news={news}
                   gallery={gallery}
                   members={members}
+                  registrations={registrations}
                   onNavigate={setActiveSection}
                 />
               )}
               {activeSection === 'members' && <MembersPanel />}
               {activeSection === 'calendar' && <CalendarPanel workshops={workshops} onNavigate={setActiveSection} />}
               {activeSection === 'workshops' && <WorkshopPanel />}
+              {activeSection === 'registrations' && <RegistrationsPanel />}
               {activeSection === 'attendance' && <AttendancePanel />}
               {activeSection === 'analytics' && <AnalyticsPanel workshops={workshops} records={records} />}
               {activeSection === 'certificates' && <CertificateStudioPanel />}

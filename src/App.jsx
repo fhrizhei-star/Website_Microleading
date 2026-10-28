@@ -1,6 +1,5 @@
 import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, useLocation, Navigate } from 'react-router-dom';
-import { AnimatePresence } from 'framer-motion';
 import {
   AmbientBackground,
   ScrollProgressBar
@@ -8,6 +7,7 @@ import {
 import Navbar from './components/layout/Navbar';
 import Footer from './components/layout/Footer';
 import HomePage from './pages/HomePage';
+import PendaftaranPage from './pages/PendaftaranPage';
 import PresensiPage from './pages/PresensiPage';
 import BeritaPage from './pages/BeritaPage';
 import GaleriPage from './pages/GaleriPage';
@@ -42,22 +42,21 @@ function MainLayout() {
       {/* Top Navigation Bar - Hidden in Admin workspace */}
       {!isAdminRoute && <Navbar />}
 
-      {/* Main Content Area with AnimatePresence for Page Color Transitions */}
+      {/* Main Content Area */}
       <main className="flex-1 z-10 relative">
-        <AnimatePresence mode="wait">
-          <Routes location={location} key={location.pathname}>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/presensi" element={<PresensiPage />} />
-            <Route path="/berita" element={<BeritaPage />} />
-            <Route path="/galeri" element={<GaleriPage />} />
-            <Route path="/tentang" element={<TentangPage />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/admin" element={<AdminPage />} />
-            {/* Redirect /layanan to /tentang */}
-            <Route path="/layanan" element={<Navigate to="/tentang" replace />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </AnimatePresence>
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/pendaftaran" element={<PendaftaranPage />} />
+          <Route path="/presensi" element={<PresensiPage />} />
+          <Route path="/berita" element={<BeritaPage />} />
+          <Route path="/galeri" element={<GaleriPage />} />
+          <Route path="/tentang" element={<TentangPage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/admin" element={<AdminPage />} />
+          {/* Redirect /layanan to /tentang */}
+          <Route path="/layanan" element={<Navigate to="/tentang" replace />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
       </main>
 
       {/* Footer - Hidden in Admin workspace */}

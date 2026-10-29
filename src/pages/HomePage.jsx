@@ -6,7 +6,7 @@ import {
   Search, BookOpen, Zap, Shield, Clock, MapPin, Sparkles, ArrowRight,
   ClipboardCheck
 } from 'lucide-react';
-import { getAllWorkshops, getNews, getGallery, getAttendance } from '../store/dataStore';
+import { getAllWorkshops, getNews, getGallery } from '../store/dataStore';
 import {
   HeroSection,
   TrustMarquee,
@@ -38,22 +38,19 @@ export default function HomePage() {
   const [workshops, setWorkshops] = useState([]);
   const [news, setNews] = useState([]);
   const [gallery, setGallery] = useState([]);
-  const [attendanceCount, setAttendanceCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function loadData() {
       try {
-        const [wData, nData, gData, aData] = await Promise.all([
+        const [wData, nData, gData] = await Promise.all([
           getAllWorkshops(),
           getNews(),
           getGallery(),
-          getAttendance(),
         ]);
         setWorkshops(wData || []);
         setNews(nData || []);
         setGallery(gData || []);
-        setAttendanceCount(aData ? aData.length : 0);
       } catch (err) {
         console.error('Error loading home data:', err);
       } finally {
@@ -73,7 +70,7 @@ export default function HomePage() {
         <TrustMarquee />
 
         {/* 3. Count Up Stats */}
-        <StatsSection workshopCount={workshops.length} participantCount={attendanceCount} />
+        <StatsSection workshopCount={workshops.length} />
 
         {/* 4. Keunggulan / Core Values */}
         <KeunggulanSection />

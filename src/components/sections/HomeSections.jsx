@@ -280,16 +280,15 @@ export function TrustMarquee() {
 // ========================
 // Stats Section
 // ========================
-export function StatsSection({ workshopCount = 0, participantCount = 0 }) {
+export function StatsSection({ workshopCount = 0 }) {
   const displayWs = workshopCount > 0 ? workshopCount : 30;
-  const displayPart = participantCount > 0 ? participantCount : 500;
 
   return (
     <SectionReveal>
       <section className="py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-            <StatCard value={displayPart} label="Peserta Terdata" sublabel="Mahasiswa & Dosen" suffix="+" />
+            <StatCard value={500} label="Peserta Terdata" sublabel="Mahasiswa & Dosen" suffix="+" />
             <StatCard value={100} label="E-Sertifikat Digital" sublabel="Otomatis & Terverifikasi" suffix="%" />
             <StatCard value={displayWs} label="Workshop & Pelatihan" sublabel="Diselenggarakan Lab" suffix={workshopCount > 0 ? "" : "+"} />
             <StatCard value={4.9} label="Indeks Kepuasan" sublabel="Evaluasi Praktikum" decimals={1} suffix="/5" />

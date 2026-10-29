@@ -151,11 +151,18 @@ export function HeroSection({ workshops = [] }) {
                   <span className={`w-2.5 h-2.5 rounded-full ${activeWorkshop?.status === 'open' ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`} />
                   <span className="text-xs font-extrabold text-slate-800 uppercase tracking-wider">Workshop & Pelatihan</span>
                 </div>
-                <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold ${activeWorkshop?.status === 'open'
+                <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold ${
+                  activeWorkshop?.is_attendance_open
+                    ? 'bg-purple-100 text-purple-900 border border-purple-200'
+                    : activeWorkshop?.status === 'open'
                     ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
                     : 'bg-slate-100 text-slate-600 border border-slate-200'
-                  }`}>
-                  {activeWorkshop?.status === 'open' ? 'Presensi Aktif' : 'Pendaftaran Ditutup'}
+                }`}>
+                  {activeWorkshop?.is_attendance_open
+                    ? '⚡ Presensi Hari-H Aktif'
+                    : activeWorkshop?.status === 'open'
+                    ? '● Pendaftaran Dibuka'
+                    : 'Pendaftaran Ditutup'}
                 </span>
               </div>
 

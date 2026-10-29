@@ -6,11 +6,14 @@ import {
   Award, Search, Calendar, Clock, MapPin, User, Send, ExternalLink,
   CheckCircle, CheckCircle2, Loader2, UploadCloud, FileText, Image as ImageIcon,
   File, X, AlertCircle, Sparkles, Building, Mail, Phone, Hash, Check, Zap, Download,
-  Eye, Printer, Copy
+  Eye, Printer, Copy, KeyRound, Lock, Unlock, EyeOff
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { jsPDF } from 'jspdf';
-import { getAllWorkshops, getWorkshops, getAttendance, submitAttendance, findRegistrationByNimOrCode } from '../store/dataStore';
+import {
+  getAllWorkshops, getWorkshops, getAttendance, submitAttendance,
+  findRegistrationByNimOrCode, getWorkshopAttendanceStatus
+} from '../store/dataStore';
 import GoogleDriveIcon from '../components/common/GoogleDriveIcon';
 import PageTransition, { SectionReveal, StaggerContainer, StaggerItem } from '../components/transitions/PageTransition';
 import { playClick, playSuccess, playError } from '../utils/audio';
@@ -52,6 +55,7 @@ function getFileIcon(fileName) {
 // ========================
 function WorkshopCard({ workshop, onSelect }) {
   const isOpen = workshop.status === 'open';
+  const attendanceStatus = getWorkshopAttendanceStatus(workshop);
 
   return (
     <div className="group relative rounded-3xl p-6 bg-gradient-to-br from-white/95 via-purple-50/30 to-white/90 border border-purple-200/80 shadow-md shadow-purple-900/5 hover:shadow-xl hover:shadow-purple-900/10 hover:border-purple-300 transition-all duration-300 flex flex-col justify-between h-full overflow-hidden">
@@ -59,15 +63,24 @@ function WorkshopCard({ workshop, onSelect }) {
       <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/10 rounded-full blur-2xl pointer-events-none group-hover:bg-purple-500/15 transition-all" />
 
       <div className="relative z-10">
-        <div className="flex items-center justify-between gap-2 mb-3.5">
+        <div className="flex items-center justify-between gap-2 mb-3.5 flex-wrap">
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-100/80 text-purple-900 text-[11px] font-bold border border-purple-200">
             <Calendar size={11} className="text-purple-700" />
             Kegiatan Lab Microleading
           </span>
-          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold shadow-xs ${isOpen ? 'bg-emerald-600 text-white' : 'bg-slate-400 text-white'}`}>
-            {isOpen && <span className="w-1.5 h-1.5 rounded-full bg-white mr-1.5 animate-pulse" />}
-            {isOpen ? 'Dibuka' : 'Ditutup'}
-          </span>
+          <div className="flex items-center gap-1.5">
+            {attendanceStatus.allowed ? (
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-600 text-white shadow-xs">
+                <span className="w-1.5 h-1.5 rounded-full bg-white mr-1.5 animate-pulse" />
+                Presensi Aktif
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200 shadow-xs">
+                <Lock size={9} />
+                Presensi Terkunci
+              </span>
+            )}
+          </div>
         </div>
 
         <h4 className="font-display font-extrabold text-slate-900 text-base mb-2 leading-snug group-hover:text-purple-900 transition-colors">
@@ -94,7 +107,7 @@ function WorkshopCard({ workshop, onSelect }) {
         </div>
       </div>
 
-      {isOpen ? (
+      {attendanceStatus.allowed ? (
         <button
           onClick={() => { playClick(); onSelect(workshop); }}
           className="btn-shimmer relative z-10 w-full py-3 rounded-2xl font-bold text-xs text-white bg-gradient-to-r from-purple-600 via-violet-600 to-indigo-600 shadow-md shadow-purple-600/25 hover:shadow-lg hover:shadow-purple-600/40 hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2 cursor-pointer"
@@ -102,9 +115,22 @@ function WorkshopCard({ workshop, onSelect }) {
           <Award size={13} />
           <span>Pilih & Isi Presensi Ini</span>
         </button>
+      ) : isOpen ? (
+        <div className="space-y-1.5 relative z-10">
+          <div className="w-full py-2.5 px-3 rounded-xl font-bold text-[11px] text-amber-800 bg-amber-50 border border-amber-200 flex items-center justify-center gap-1.5 text-center">
+            <Lock size={12} className="text-amber-600 shrink-0" />
+            <span>Presensi Baru Dibuka pada Hari-H</span>
+          </div>
+          <a
+            href={`/pendaftaran?workshop=${workshop.id}`}
+            className="w-full py-2 px-3 rounded-xl font-bold text-xs text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 flex items-center justify-center gap-1.5 transition-colors no-underline"
+          >
+            Daftar / Ambil E-Ticket Sesi Ini &rarr;
+          </a>
+        </div>
       ) : (
         <div className="relative z-10 w-full py-3 rounded-2xl font-bold text-xs text-slate-500 bg-slate-100 border border-slate-200 flex items-center justify-center gap-2">
-          <span>Pendaftaran Selesai / Ditutup</span>
+          <span>Kegiatan Selesai / Ditutup</span>
         </div>
       )}
     </div>
@@ -554,8 +580,10 @@ function AttendanceForm({ workshops, selectedWorkshop, onGoToCek }) {
     instansi: '',
     email: '',
     whatsapp: '',
-    kesan: ''
+    kesan: '',
+    pin: ''
   });
+  const [showPin, setShowPin] = useState(false);
 
   const [buktiFile, setBuktiFile] = useState(null); // { name, size, type, dataUrl }
   const [uploadError, setUploadError] = useState('');
@@ -568,6 +596,9 @@ function AttendanceForm({ workshops, selectedWorkshop, onGoToCek }) {
   const [lookupQuery, setLookupQuery] = useState('');
   const [lookupSuccess, setLookupSuccess] = useState(null);
   const [isSearching, setIsSearching] = useState(false);
+
+  const currentSelectedWs = workshops.find(w => String(w.id) === String(form.workshop_id)) || banner || selectedWorkshop;
+  const attendanceAccess = getWorkshopAttendanceStatus(currentSelectedWs);
 
   const handleAutoFillFromRegistration = async () => {
     if (!lookupQuery.trim()) {
@@ -777,6 +808,42 @@ function AttendanceForm({ workshops, selectedWorkshop, onGoToCek }) {
       return;
     }
 
+    // 0. Evaluasi 3 Lapis Keamanan Presensi
+    const access = getWorkshopAttendanceStatus(currentSelectedWs);
+    if (!access.allowed) {
+      playError();
+      showAlert({
+        title: 'Presensi Belum Dibuka',
+        message: access.reason,
+        type: 'warning',
+      });
+      return;
+    }
+
+    if (access.requiresPin) {
+      const userPin = (form.pin || '').trim().toUpperCase();
+      const expectedPin = (access.pin || '').trim().toUpperCase();
+      if (!userPin) {
+        playError();
+        showAlert({
+          title: 'PIN Presensi Diperlukan',
+          message: 'Kegiatan ini mewajibkan PIN Presensi. Silakan masukkan PIN resmi yang ditampilkan panitia di slide proyektor ruangan.',
+          type: 'warning',
+        });
+        document.getElementById('input-presensi-pin')?.focus();
+        return;
+      }
+      if (userPin !== expectedPin) {
+        playError();
+        showAlert({
+          title: 'PIN Presensi Salah',
+          message: 'PIN yang Anda masukkan tidak sesuai. Silakan periksa kembali PIN resmi yang ditampilkan oleh panitia/pemateri di dalam ruangan.',
+          type: 'error',
+        });
+        return;
+      }
+    }
+
     if (!buktiFile) {
       setUploadError('Wajib melampirkan berkas bukti kehadiran (JPG, PNG, PDF, atau DOCX)!');
       playError();
@@ -835,14 +902,14 @@ function AttendanceForm({ workshops, selectedWorkshop, onGoToCek }) {
       setShowThankYouModal(true);
 
       // Reset form
-      setForm({ workshop_id: '', nama: '', identitas: '', instansi: '', email: '', whatsapp: '', kesan: '' });
+      setForm({ workshop_id: '', nama: '', identitas: '', instansi: '', email: '', whatsapp: '', kesan: '', pin: '' });
       setBuktiFile(null);
       setBanner(null);
     } catch (err) {
       playError();
       showAlert({
         title: 'Gagal Mengirim Presensi',
-        message: 'Terjadi kendala saat menyimpan data presensi Anda. Silakan periksa koneksi internet dan coba lagi.',
+        message: err?.message || 'Terjadi kendala saat menyimpan data presensi Anda. Silakan periksa koneksi internet dan coba lagi.',
         type: 'error',
       });
     } finally {
@@ -947,11 +1014,14 @@ function AttendanceForm({ workshops, selectedWorkshop, onGoToCek }) {
               required
             >
               <option value="">-- Pilih Kegiatan yang Diikuti --</option>
-              {workshops.filter(w => w.status === 'open').map(w => (
-                <option key={w.id} value={w.id}>
-                  {w.title} ({w.date})
-                </option>
-              ))}
+              {workshops.filter(w => w.status === 'open' || w.is_attendance_open === true).map(w => {
+                const st = getWorkshopAttendanceStatus(w);
+                return (
+                  <option key={w.id} value={w.id}>
+                    {w.title} ({w.date}) {st.allowed ? '✓ [Presensi Aktif]' : '🔒 [Terkunci / Hari-H]'}
+                  </option>
+                );
+              })}
             </select>
           </div>
 
@@ -988,7 +1058,116 @@ function AttendanceForm({ workshops, selectedWorkshop, onGoToCek }) {
               </motion.div>
             )}
           </AnimatePresence>
+
+          {/* Status Kunci Keamanan Presensi (Date-Lock / Saklar Panitia) */}
+          {currentSelectedWs && (
+            <AnimatePresence mode="wait">
+              {!attendanceAccess.allowed ? (
+                <motion.div
+                  key="locked-banner"
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -4 }}
+                  className="p-4 rounded-2xl bg-amber-50/95 border-2 border-amber-300 text-amber-950 text-xs space-y-2 shadow-xs"
+                >
+                  <div className="flex items-start gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-xs">
+                      <Lock size={16} />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-extrabold text-amber-950 text-sm">
+                        Sesi Presensi Belum Dibuka
+                      </h4>
+                      <p className="text-amber-800 text-xs mt-0.5 leading-relaxed">
+                        {attendanceAccess.reason}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="pt-2 border-t border-amber-200/80 flex items-center justify-between flex-wrap gap-2 text-[11px] font-semibold text-amber-900">
+                    <span>💡 Simpan nomor tiket registrasi Anda untuk verifikasi pada Hari-H.</span>
+                    <a
+                      href={`/pendaftaran?tab=cek`}
+                      className="underline hover:text-amber-950 font-bold"
+                    >
+                      Cek Tiket Pendaftaran &rarr;
+                    </a>
+                  </div>
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="open-banner"
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -4 }}
+                  className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-950 text-xs flex items-center justify-between gap-2 shadow-xs"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                    <span className="font-bold text-emerald-900">
+                      Sesi Presensi Hari-H Aktif — Formulir Terbuka
+                    </span>
+                  </div>
+                  <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-[10px] font-extrabold">
+                    SIAP ABSEN
+                  </span>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          )}
         </div>
+
+        {/* ============================================================ */}
+        {/* SECTION 1.5: PIN Presensi Hari-H (Jika Workshop Memakai PIN) */}
+        {/* ============================================================ */}
+        {currentSelectedWs && attendanceAccess.allowed && attendanceAccess.requiresPin && (
+          <motion.div
+            initial={{ opacity: 0, y: 5 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="rounded-3xl p-5 sm:p-6 bg-gradient-to-br from-indigo-50/90 via-white to-purple-50/70 border-2 border-indigo-200 shadow-sm space-y-3"
+          >
+            <div className="flex items-center justify-between pb-2 border-b border-indigo-100 flex-wrap gap-2">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold text-xs shadow-md shadow-indigo-600/25">
+                  <KeyRound size={15} />
+                </div>
+                <div>
+                  <h3 className="font-display font-extrabold text-slate-900 text-sm sm:text-base leading-tight">
+                    PIN Presensi Hari-H <span className="text-rose-500">*</span>
+                  </h3>
+                  <p className="text-[11px] text-slate-500">Masukkan kode verifikasi yang dibagikan narasumber di ruangan</p>
+                </div>
+              </div>
+              <span className="px-2.5 py-1 rounded-full bg-indigo-100 text-indigo-800 text-[10px] font-extrabold uppercase tracking-wider border border-indigo-200 flex items-center gap-1">
+                <Lock size={10} /> Verifikasi Ruangan
+              </span>
+            </div>
+
+            <div className="relative max-w-sm">
+              <input
+                id="input-presensi-pin"
+                type={showPin ? "text" : "password"}
+                value={form.pin}
+                onChange={e => set('pin', e.target.value.toUpperCase())}
+                placeholder="Ketik PIN Presensi..."
+                maxLength={12}
+                required
+                className="w-full pl-4 pr-12 py-3 rounded-2xl border-2 border-indigo-300 bg-white text-base text-indigo-950 font-mono font-extrabold tracking-widest focus:border-indigo-600 focus:ring-4 focus:ring-indigo-500/10 focus:outline-none transition-all shadow-xs"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPin(!showPin)}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-indigo-600 p-1 cursor-pointer transition-colors"
+                title={showPin ? "Sembunyikan PIN" : "Tampilkan PIN"}
+              >
+                {showPin ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+            <p className="text-[11px] text-indigo-700 font-medium flex items-center gap-1.5">
+              <Sparkles size={12} className="text-indigo-600 shrink-0" />
+              PIN rahasia ini ditampilkan di slide proyektor ruangan untuk memastikan kehadiran fisik peserta.
+            </p>
+          </motion.div>
+        )}
 
         {/* ============================================================ */}
         {/* SECTION 2: Data Identitas Peserta (Clean Input Group Icons)  */}
@@ -1237,18 +1416,25 @@ function AttendanceForm({ workshops, selectedWorkshop, onGoToCek }) {
         {/* ============================================================ */}
         {/* Submit Button (Luxury Shimmer Gradient)                     */}
         {/* ============================================================ */}
-        <button
-          type="submit"
-          disabled={loading}
-          className="btn-shimmer w-full py-4.5 rounded-2xl font-display font-extrabold text-sm sm:text-base text-white bg-gradient-to-r from-purple-600 via-violet-600 to-indigo-600 shadow-xl shadow-purple-600/30 hover:shadow-2xl hover:shadow-purple-600/50 flex items-center justify-center gap-2.5 disabled:opacity-70 hover:scale-[1.01] active:scale-[0.99] transition-all cursor-pointer"
-        >
-          {loading ? (
-            <Loader2 size={18} className="animate-spin" />
-          ) : (
-            <Send size={18} />
-          )}
-          <span>{loading ? 'Menyimpan Presensi & Mengunggah Bukti...' : 'Kirim Presensi & Ambil Sertifikat'}</span>
-        </button>
+        {currentSelectedWs && !attendanceAccess.allowed ? (
+          <div className="w-full py-4.5 px-6 rounded-2xl font-display font-extrabold text-sm sm:text-base text-amber-900 bg-amber-100/90 border-2 border-amber-300 flex items-center justify-center gap-2.5 text-center shadow-xs">
+            <Lock size={18} className="text-amber-700 shrink-0" />
+            <span>Presensi Sesi Ini Belum Dibuka oleh Panitia</span>
+          </div>
+        ) : (
+          <button
+            type="submit"
+            disabled={loading}
+            className="btn-shimmer w-full py-4.5 rounded-2xl font-display font-extrabold text-sm sm:text-base text-white bg-gradient-to-r from-purple-600 via-violet-600 to-indigo-600 shadow-xl shadow-purple-600/30 hover:shadow-2xl hover:shadow-purple-600/50 flex items-center justify-center gap-2.5 disabled:opacity-70 hover:scale-[1.01] active:scale-[0.99] transition-all cursor-pointer"
+          >
+            {loading ? (
+              <Loader2 size={18} className="animate-spin" />
+            ) : (
+              <Send size={18} />
+            )}
+            <span>{loading ? 'Menyimpan Presensi & Mengunggah Bukti...' : 'Kirim Presensi & Ambil Sertifikat'}</span>
+          </button>
+        )}
       </form>
     </div>
   );

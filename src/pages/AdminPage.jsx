@@ -10,7 +10,7 @@ import {
   UserPlus, GraduationCap, TrendingUp, Activity, Star,
   Bell, BarChart2, PieChart, ChevronLeft, ChevronRight,
   BookOpen, Shield, Layers, Target, Cpu, Globe, KeyRound, Lock,
-  ClipboardCheck
+  ClipboardCheck, Unlock, Key, Dices, ShieldCheck
 } from 'lucide-react';
 import {
   getAllWorkshops, getAttendance, getNews, getGallery, getMembers,
@@ -19,7 +19,8 @@ import {
   createMember, updateMember, deleteMember, saveMembersOrder,
   deleteAttendance, updateAttendanceDriveUrl, getCertSettings, updateCertSettings,
   getCurrentUser, clearCurrentUser, getFirebaseStatus, changeAdminPassword,
-  getRegistrations, deleteRegistration, updateRegistrationStatus
+  getRegistrations, deleteRegistration, updateRegistrationStatus,
+  getWorkshopAttendanceStatus
 } from '../store/dataStore';
 import { exportStyledExcel, exportSingleRegistrationExcel } from '../utils/excelExport';
 import { useNavigate } from 'react-router-dom';
@@ -1039,13 +1040,14 @@ function WorkshopPanel() {
     time: '08:30 - 12:00 WITA',
     location: 'Lab Microleading MPI FTK UINAM',
     description: '',
-    status: 'open'
+    status: 'open',
+    is_attendance_open: false,
+    attendance_pin: ''
   });
 
   useEffect(() => { getAllWorkshops().then(setWorkshops); }, []);
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
-
 
   // Start Editing Workshop
   const handleStartEdit = (ws) => {
@@ -1058,7 +1060,9 @@ function WorkshopPanel() {
       time: ws.time || '08:30 - 12:00 WITA',
       location: ws.location || 'Lab Microleading MPI FTK UINAM',
       description: ws.description || '',
-      status: ws.status || 'open'
+      status: ws.status || 'open',
+      is_attendance_open: ws.is_attendance_open === true,
+      attendance_pin: ws.attendance_pin || ''
     });
     setShowForm(true);
     window.scrollTo({ top: 100, behavior: 'smooth' });
@@ -1075,7 +1079,9 @@ function WorkshopPanel() {
       time: '08:30 - 12:00 WITA',
       location: 'Lab Microleading MPI FTK UINAM',
       description: '',
-      status: 'open'
+      status: 'open',
+      is_attendance_open: false,
+      attendance_pin: ''
     });
   };
 
@@ -1090,10 +1096,20 @@ function WorkshopPanel() {
       time: ws.time,
       location: ws.location,
       description: ws.description,
-      status: 'open'
+      status: 'open',
+      is_attendance_open: false,
+      attendance_pin: ''
     });
     setShowForm(true);
     window.scrollTo({ top: 100, behavior: 'smooth' });
+  };
+
+  // Generate PIN Acak
+  const generateRandomPin = () => {
+    const randomCode = String(Math.floor(1000 + Math.random() * 9000));
+    set('attendance_pin', randomCode);
+    playSuccess();
+    showToast(`PIN acak "${randomCode}" berhasil dibuat!`, 'success');
   };
 
   // Create or Update
@@ -1102,9 +1118,11 @@ function WorkshopPanel() {
     if (editingWorkshopId) {
       await updateWorkshop(editingWorkshopId, form);
       playSuccess();
+      showToast('Perubahan workshop berhasil disimpan!', 'success');
     } else {
       await createWorkshop(form);
       playSuccess();
+      showToast('Workshop baru berhasil diterbitkan!', 'success');
     }
     handleCancelForm();
     getAllWorkshops().then(setWorkshops);
@@ -1123,9 +1141,26 @@ function WorkshopPanel() {
     getAllWorkshops().then(setWorkshops);
   };
 
-  const handleToggleStatus = async (ws) => {
-    await updateWorkshop(ws.id, { status: ws.status === 'open' ? 'closed' : 'open' });
+  // Toggle Pendaftaran (Buka/Tutup)
+  const handleToggleRegistration = async (ws) => {
+    const nextStatus = ws.status === 'open' ? 'closed' : 'open';
+    await updateWorkshop(ws.id, { status: nextStatus });
     playClick();
+    showToast(nextStatus === 'open' ? 'Pendaftaran dibuka!' : 'Pendaftaran ditutup.', 'info');
+    getAllWorkshops().then(setWorkshops);
+  };
+
+  // Toggle Presensi Hari-H (Buka/Kunci)
+  const handleToggleAttendance = async (ws) => {
+    const nextAttendance = !(ws.is_attendance_open === true);
+    await updateWorkshop(ws.id, { is_attendance_open: nextAttendance });
+    playClick();
+    if (nextAttendance) {
+      playSuccess();
+      showToast(`Presensi Hari-H untuk "${ws.title}" telah DIBUKA!`, 'success');
+    } else {
+      showToast(`Presensi untuk "${ws.title}" telah DITUTUP.`, 'info');
+    }
     getAllWorkshops().then(setWorkshops);
   };
 
@@ -1133,8 +1168,8 @@ function WorkshopPanel() {
     <div className="space-y-5">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h2 className="font-display font-extrabold text-xl text-slate-900">Workshop</h2>
-          <p className="text-xs text-slate-500">Buat, edit, dan kelola sesi workshop yang terbuka untuk presensi mahasiswa.</p>
+          <h2 className="font-display font-extrabold text-xl text-slate-900">Workshop & Pelatihan</h2>
+          <p className="text-xs text-slate-500">Kelola sesi workshop, jadwal, proteksi PIN, dan kontrol presensi Hari-H.</p>
         </div>
         <button
           onClick={() => {
@@ -1173,7 +1208,7 @@ function WorkshopPanel() {
                     {editingWorkshopId ? 'Edit Informasi Workshop' : 'Buat Workshop Baru'}
                   </h3>
                   <p className="text-[11px] text-slate-500">
-                    {editingWorkshopId ? 'Perbarui data narasumber, jadwal, lokasi, atau deskripsi kegiatan' : 'Lengkapi formulir di bawah ini untuk menerbitkan sesi baru'}
+                    {editingWorkshopId ? 'Perbarui data narasumber, jadwal, PIN presensi, atau status kegiatan' : 'Lengkapi formulir di bawah ini untuk menerbitkan sesi workshop baru'}
                   </p>
                 </div>
               </div>
@@ -1279,10 +1314,95 @@ function WorkshopPanel() {
                 <textarea
                   value={form.description}
                   onChange={e => set('description', e.target.value)}
-                  rows="3"
+                  rows="2"
                   placeholder="Tuliskan tujuan dan pokok materi kegiatan..."
                   className="w-full px-3.5 py-2.5 rounded-xl border border-purple-200 text-sm bg-white focus:border-purple-600 focus:outline-none resize-none"
                 />
+              </div>
+
+              {/* Section 🛡️ Pengaturan Keamanan Presensi & Pendaftaran */}
+              <div className="md:col-span-2 p-4 rounded-2xl bg-purple-50/80 border border-purple-200 space-y-3.5">
+                <div className="flex items-center gap-2 pb-2 border-b border-purple-200">
+                  <ShieldCheck size={16} className="text-purple-700" />
+                  <span className="text-xs font-extrabold text-purple-950 uppercase tracking-wider">
+                    Sistem 3 Lapis: Keamanan Presensi Hari-H & Akses Pendaftaran
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* PIN Presensi Hari-H */}
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700 uppercase flex items-center justify-between">
+                      <span className="flex items-center gap-1.5">
+                        <KeyRound size={12} className="text-purple-600" />
+                        PIN Presensi Hari-H (Opsional)
+                      </span>
+                      <button
+                        type="button"
+                        onClick={generateRandomPin}
+                        className="text-[11px] font-bold text-purple-700 hover:text-purple-900 flex items-center gap-1 hover:underline cursor-pointer"
+                      >
+                        <Dices size={12} /> Acak PIN
+                      </button>
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={form.attendance_pin}
+                        onChange={e => set('attendance_pin', e.target.value.toUpperCase())}
+                        placeholder="Contoh: 8492 atau MPI26"
+                        maxLength={12}
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-purple-200 text-sm font-mono font-bold bg-white focus:border-purple-600 focus:outline-none uppercase tracking-wider text-purple-950"
+                      />
+                      {form.attendance_pin && (
+                        <button
+                          type="button"
+                          onClick={() => set('attendance_pin', '')}
+                          className="p-2.5 text-xs font-bold text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer"
+                          title="Hapus PIN"
+                        >
+                          <X size={14} />
+                        </button>
+                      )}
+                    </div>
+                    <p className="text-[10px] text-slate-500">
+                      Jika diisi, peserta wajib memasukkan PIN ini di formulir presensi untuk klaim sertifikat.
+                    </p>
+                  </div>
+
+                  {/* Saklar Status Presensi Hari-H & Pendaftaran */}
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-700 uppercase flex items-center gap-1.5">
+                      <Sliders size={12} className="text-purple-600" />
+                      Status Gerbang & Akses Peserta
+                    </label>
+                    <div className="flex flex-col gap-2">
+                      <label className="flex items-center gap-2.5 p-2 rounded-xl bg-white border border-purple-100 cursor-pointer hover:bg-purple-50/50 transition-colors">
+                        <input
+                          type="checkbox"
+                          checked={form.status === 'open'}
+                          onChange={e => set('status', e.target.checked ? 'open' : 'closed')}
+                          className="w-4 h-4 rounded text-purple-600 focus:ring-purple-500"
+                        />
+                        <span className="text-xs font-bold text-slate-800">
+                          Buka Pendaftaran Peserta (Formulir E-Ticket)
+                        </span>
+                      </label>
+
+                      <label className="flex items-center gap-2.5 p-2 rounded-xl bg-white border border-purple-100 cursor-pointer hover:bg-purple-50/50 transition-colors">
+                        <input
+                          type="checkbox"
+                          checked={Boolean(form.is_attendance_open)}
+                          onChange={e => set('is_attendance_open', e.target.checked)}
+                          className="w-4 h-4 rounded text-purple-600 focus:ring-purple-500"
+                        />
+                        <span className="text-xs font-bold text-slate-800">
+                          Buka Presensi Hari-H Sekarang (Klaim E-Sertifikat)
+                        </span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               {/* Buttons */}
@@ -1312,67 +1432,115 @@ function WorkshopPanel() {
         {workshops.length === 0 && (
           <p className="text-center text-sm text-slate-400 py-8">Belum ada workshop terdaftar.</p>
         )}
-        {workshops.map(w => (
-          <div key={w.id} className="bento-card rounded-2xl p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-3">
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${w.status === 'open' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'}`}>
-                  {w.status === 'open' ? '● Pendaftaran Dibuka' : '○ Ditutup'}
-                </span>
-                <span className="text-xs text-slate-400 font-medium flex items-center gap-1">
-                  <Calendar size={11} /> {w.date} ({w.time})
-                </span>
+        {workshops.map(w => {
+          const isAttOpen = w.is_attendance_open === true;
+          return (
+            <div key={w.id} className="bento-card rounded-2xl p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-3">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                  {/* Status Pendaftaran Badge */}
+                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${w.status === 'open' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 'bg-slate-200 text-slate-600'}`}>
+                    {w.status === 'open' ? '● Pendaftaran Dibuka' : '○ Pendaftaran Ditutup'}
+                  </span>
+
+                  {/* Status Presensi Hari-H Badge */}
+                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1 ${isAttOpen ? 'bg-purple-100 text-purple-800 border border-purple-200' : 'bg-amber-100 text-amber-800 border border-amber-200'}`}>
+                    {isAttOpen ? <Zap size={10} className="text-purple-600" /> : <Lock size={10} className="text-amber-600" />}
+                    {isAttOpen ? '⚡ Presensi Hari-H: AKTIF' : '🔒 Presensi: TERKUNCI'}
+                  </span>
+
+                  {/* PIN Info Badge */}
+                  {w.attendance_pin ? (
+                    <span
+                      onClick={() => {
+                        navigator.clipboard?.writeText(w.attendance_pin);
+                        playSuccess();
+                        showToast(`PIN "${w.attendance_pin}" disalin!`, 'success');
+                      }}
+                      className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 flex items-center gap-1 cursor-pointer hover:bg-indigo-100 transition-colors"
+                      title="Klik untuk menyalin PIN ke clipboard"
+                    >
+                      <KeyRound size={10} /> PIN: {w.attendance_pin}
+                    </span>
+                  ) : (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] text-slate-400 bg-slate-50 border border-slate-200">
+                      Tanpa PIN
+                    </span>
+                  )}
+
+                  <span className="text-xs text-slate-400 font-medium flex items-center gap-1">
+                    <Calendar size={11} /> {w.date} ({w.time})
+                  </span>
+                </div>
+                <h4 className="font-bold text-slate-900 text-sm sm:text-base leading-snug">{w.title}</h4>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  <strong>{w.speaker}</strong> • {w.location}
+                </p>
               </div>
-              <h4 className="font-bold text-slate-900 text-sm sm:text-base leading-snug">{w.title}</h4>
-              <p className="text-xs text-slate-500 mt-0.5">
-                <strong>{w.speaker}</strong> • {w.location}
-              </p>
+
+              <div className="flex items-center gap-2 shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-purple-100 flex-wrap">
+                {/* Quick Toggle Presensi Hari-H */}
+                <button
+                  type="button"
+                  onClick={() => handleToggleAttendance(w)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all inline-flex items-center gap-1.5 cursor-pointer shadow-xs ${isAttOpen
+                    ? 'bg-purple-700 text-white hover:bg-purple-800 shadow-purple-700/20'
+                    : 'bg-white text-purple-700 border border-purple-300 hover:bg-purple-50'
+                    }`}
+                  title={isAttOpen ? 'Kunci presensi agar peserta tidak bisa absen' : 'Buka presensi hari-H agar peserta bisa absen'}
+                >
+                  {isAttOpen ? <Lock size={12} /> : <Unlock size={12} />}
+                  <span>{isAttOpen ? 'Kunci Presensi' : 'Buka Presensi'}</span>
+                </button>
+
+                {/* Quick Toggle Pendaftaran */}
+                <button
+                  type="button"
+                  onClick={() => handleToggleRegistration(w)}
+                  className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition-colors inline-flex items-center gap-1 cursor-pointer ${w.status === 'open'
+                    ? 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
+                    : 'bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100'
+                    }`}
+                  title="Buka atau tutup akses pendaftaran peserta baru"
+                >
+                  {w.status === 'open' ? <XCircle size={12} /> : <Check size={12} />}
+                  <span>{w.status === 'open' ? 'Tutup Daftar' : 'Buka Daftar'}</span>
+                </button>
+
+                {/* Edit Button */}
+                <button
+                  type="button"
+                  onClick={() => handleStartEdit(w)}
+                  className="px-2.5 py-1.5 rounded-xl text-xs font-bold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 transition-colors inline-flex items-center gap-1 cursor-pointer"
+                  title="Edit informasi workshop ini"
+                >
+                  <Edit3 size={13} />
+                  <span>Edit</span>
+                </button>
+
+                {/* Duplicate/Clone Button */}
+                <button
+                  type="button"
+                  onClick={() => handleCloneWorkshop(w)}
+                  className="px-2.5 py-1.5 rounded-xl text-xs font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 transition-colors inline-flex items-center gap-1 cursor-pointer"
+                  title="Duplikasi workshop ini untuk sesi berikutnya"
+                >
+                  <Copy size={12} />
+                  <span>Duplikasi</span>
+                </button>
+
+                {/* Delete Button */}
+                <button
+                  onClick={() => handleDelete(w.id)}
+                  className="p-2 rounded-xl hover:bg-rose-50 text-rose-500 transition-colors cursor-pointer"
+                  title="Hapus workshop"
+                >
+                  <Trash2 size={15} />
+                </button>
+              </div>
             </div>
-
-            <div className="flex items-center gap-2 shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-purple-100 flex-wrap">
-              {/* Edit Button */}
-              <button
-                type="button"
-                onClick={() => handleStartEdit(w)}
-                className="px-2.5 py-1.5 rounded-xl text-xs font-bold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 transition-colors inline-flex items-center gap-1 cursor-pointer"
-                title="Edit informasi workshop ini"
-              >
-                <Edit3 size={13} />
-                <span>Edit</span>
-              </button>
-
-              {/* Duplicate/Clone Button */}
-              <button
-                type="button"
-                onClick={() => handleCloneWorkshop(w)}
-                className="px-2.5 py-1.5 rounded-xl text-xs font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 transition-colors inline-flex items-center gap-1 cursor-pointer"
-                title="Duplikasi workshop ini untuk sesi berikutnya"
-              >
-                <Copy size={12} />
-                <span>Duplikasi</span>
-              </button>
-
-              <button
-                onClick={() => handleToggleStatus(w)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors inline-flex items-center gap-1 cursor-pointer ${w.status === 'open'
-                  ? 'bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100'
-                  : 'bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100'
-                  }`}
-              >
-                {w.status === 'open' ? <XCircle size={13} /> : <Check size={13} />}
-                <span>{w.status === 'open' ? 'Tutup' : 'Buka'}</span>
-              </button>
-
-              <button
-                onClick={() => handleDelete(w.id)}
-                className="p-2 rounded-xl hover:bg-rose-50 text-rose-500 transition-colors cursor-pointer"
-                title="Hapus workshop"
-              >
-                <Trash2 size={15} />
-              </button>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

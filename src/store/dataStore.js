@@ -31,6 +31,8 @@ const DEFAULT_WORKSHOPS = [
     location: "Laboratorium Microleading MPI",
     description: "Pelatihan teknis penyusunan naskah artikel jurnal, sitasi akademik, dan kiat tembus jurnal SINTA terakreditasi.",
     status: "open",
+    is_attendance_open: true,
+    attendance_pin: "MPI26",
     cert_bg: null,
     cert_layout: null,
   },
@@ -43,6 +45,8 @@ const DEFAULT_WORKSHOPS = [
     location: "Aula FTK Kampus II UINAM",
     description: "Meningkatkan kemampuan komunikasi vokal, retorika panggung, dan seni berbicara persuasif bagi calon pendidik.",
     status: "open",
+    is_attendance_open: true,
+    attendance_pin: "SANTRI88",
     cert_bg: null,
     cert_layout: null,
   },
@@ -55,6 +59,8 @@ const DEFAULT_WORKSHOPS = [
     location: "Lab Komputer & Multimedia MPI",
     description: "Pengenalan teknologi AI etis dan pembuatan media ajar berbasis web interaktif untuk pendidik era digital.",
     status: "open",
+    is_attendance_open: false,
+    attendance_pin: "AI2026",
     cert_bg: null,
     cert_layout: null,
   },
@@ -358,8 +364,106 @@ export async function getWorkshops() {
   return all.filter(w => w.status === 'open');
 }
 
+/**
+ * Evaluasi 3 Lapis Keamanan Presensi Workshop:
+ * 1. Date-Lock: Tanggal pelaksanaan vs Tanggal hari ini
+ * 2. Saklar Admin: is_attendance_open (Buka / Tutup Presensi Hari-H)
+ * 3. Token / PIN Presensi: attendance_pin verifikasi rahasia ruangan
+ */
+export function getWorkshopAttendanceStatus(workshop) {
+  if (!workshop) {
+    return {
+      allowed: false,
+      code: 'NOT_FOUND',
+      statusBadge: 'Pilih Workshop',
+      reason: 'Silakan tentukan workshop yang Anda ikuti.',
+      requiresPin: false,
+      pin: ''
+    };
+  }
+
+  const now = new Date();
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const isFutureDate = Boolean(workshop.date && workshop.date > todayStr);
+  const hasPin = Boolean(workshop.attendance_pin && String(workshop.attendance_pin).trim().length > 0);
+  const pin = hasPin ? String(workshop.attendance_pin).trim() : '';
+
+  // LAPIS 2 (Prioritas Admin Override): Jika admin membuka presensi secara live di ruangan
+  if (workshop.is_attendance_open === true) {
+    return {
+      allowed: true,
+      code: 'OPEN_LIVE',
+      statusBadge: 'Presensi Hari-H Aktif',
+      requiresPin: hasPin,
+      pin: pin,
+      reason: 'Presensi telah dibuka resmi oleh panitia di ruangan.'
+    };
+  }
+
+  // LAPIS 2: Jika admin secara eksplisit mengunci/menutup presensi
+  if (workshop.is_attendance_open === false) {
+    if (isFutureDate) {
+      return {
+        allowed: false,
+        code: 'DATE_LOCKED',
+        statusBadge: 'Presensi Belum Dibuka',
+        requiresPin: hasPin,
+        pin: pin,
+        reason: `Presensi belum dibuka. Kegiatan baru akan dilaksanakan pada ${workshop.date} (${workshop.time || 'Hari-H'}). Silakan simpan E-Ticket Anda untuk digunakan saat kegiatan berlangsung.`
+      };
+    }
+    return {
+      allowed: false,
+      code: 'ADMIN_CLOSED',
+      statusBadge: 'Presensi Terkunci',
+      requiresPin: hasPin,
+      pin: pin,
+      reason: 'Sesi presensi untuk kegiatan ini belum diaktifkan oleh panitia di ruangan.'
+    };
+  }
+
+  // LAPIS 1: Fallback jika workshop data lama belum memiliki flag is_attendance_open
+  if (isFutureDate) {
+    return {
+      allowed: false,
+      code: 'DATE_LOCKED',
+      statusBadge: 'Presensi Terkunci (Hari-H)',
+      requiresPin: hasPin,
+      pin: pin,
+      reason: `Presensi baru dapat diakses pada hari pelaksanaan kegiatan: ${workshop.date}.`
+    };
+  }
+
+  // Jika tanggal sudah hari ini / lewat dan status pendaftaran masih open
+  if (workshop.status === 'open') {
+    return {
+      allowed: true,
+      code: 'OPEN_AUTO',
+      statusBadge: 'Presensi Dibuka',
+      requiresPin: hasPin,
+      pin: pin,
+      reason: 'Presensi dibuka.'
+    };
+  }
+
+  return {
+    allowed: false,
+    code: 'CLOSED',
+    statusBadge: 'Kegiatan Selesai',
+    requiresPin: hasPin,
+    pin: pin,
+    reason: 'Kegiatan workshop ini telah selesai dan presensi telah ditutup.'
+  };
+}
+
 export async function createWorkshop(data) {
-  const newWData = { ...data, status: data.status || "open", created_at: new Date().toISOString() };
+  const newWData = {
+    ...data,
+    status: data.status || "open",
+    is_attendance_open: data.is_attendance_open ?? false,
+    attendance_pin: data.attendance_pin ? String(data.attendance_pin).trim() : "",
+    created_at: new Date().toISOString()
+  };
   if (isFirebaseConfigured && db) {
     try {
       const docRef = await addDoc(collection(db, 'workshops'), newWData);
@@ -448,6 +552,25 @@ export async function submitAttendance(data) {
   const workshops = await getAllWorkshops();
   const workshop = workshops.find(w => String(w.id) === String(data.workshop_id));
   const certSettings = await getCertSettings();
+
+  // Enforce 3 Security Layers Protection
+  if (workshop) {
+    const access = getWorkshopAttendanceStatus(workshop);
+    if (!access.allowed) {
+      throw new Error(access.reason || 'Sesi presensi untuk workshop ini belum dibuka oleh panitia.');
+    }
+
+    if (access.requiresPin) {
+      const userPin = String(data.pin || '').trim().toUpperCase();
+      const expectedPin = String(access.pin || '').trim().toUpperCase();
+      if (!userPin) {
+        throw new Error('PIN Presensi Hari-H wajib dimasukkan untuk mengklaim sertifikat.');
+      }
+      if (userPin !== expectedPin) {
+        throw new Error('PIN Presensi tidak valid! Silakan periksa PIN yang ditampilkan oleh panitia di ruangan.');
+      }
+    }
+  }
 
   const certNum = `CERT/MPI/${new Date().getFullYear()}/${String(records.length + 1).padStart(4, "0")}`;
   const newRecord = {

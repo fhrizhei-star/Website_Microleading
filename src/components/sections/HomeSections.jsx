@@ -151,11 +151,10 @@ export function HeroSection({ workshops = [] }) {
                   <span className={`w-2.5 h-2.5 rounded-full ${activeWorkshop?.status === 'open' ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`} />
                   <span className="text-xs font-extrabold text-slate-800 uppercase tracking-wider">Workshop & Pelatihan</span>
                 </div>
-                <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold ${
-                  activeWorkshop?.status === 'open'
+                <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold ${activeWorkshop?.status === 'open'
                     ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
                     : 'bg-slate-100 text-slate-600 border border-slate-200'
-                }`}>
+                  }`}>
                   {activeWorkshop?.status === 'open' ? 'Presensi Aktif' : 'Pendaftaran Ditutup'}
                 </span>
               </div>
@@ -290,7 +289,7 @@ export function StatsSection({ workshopCount = 0 }) {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
             <StatCard value={500} label="Peserta Terdata" sublabel="Mahasiswa & Dosen" suffix="+" />
             <StatCard value={100} label="E-Sertifikat Digital" sublabel="Otomatis & Terverifikasi" suffix="%" />
-            <StatCard value={displayWs} label="Workshop & Pelatihan" sublabel="Diselenggarakan Lab" suffix={workshopCount > 0 ? "" : "+"} />
+            <StatCard value={35} label="Workshop & Pelatihan" sublabel="Telah Diselenggarakan Lab" suffix="+" />
             <StatCard value={4.9} label="Indeks Kepuasan" sublabel="Evaluasi Praktikum" decimals={1} suffix="/5" />
           </div>
         </div>
@@ -379,7 +378,7 @@ function NewsDetailModal({ news, onClose }) {
       navigator.clipboard?.writeText(window.location.origin + '/berita');
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch {}
+    } catch { }
   };
 
   const modalContent = (

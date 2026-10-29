@@ -140,18 +140,18 @@ const parseStoredTeam = () => {
 const FACILITIES = [
   {
     title: 'Ruang Simulasi Microleading',
-    desc: 'Dilengkapi dengan smart-screen presentation 75 inch, sistem tata suara studio, podium interaktif, dan kamera tracking untuk evaluasi microteaching.',
+    desc: 'Dilengkapi dengan Smart-Proyektor, Ruangan Yang Luas dan Nyaman untuk meeting, presentasi, serta evaluasi microteaching.',
     img: '/img/kelas 1.jpeg'
   },
   {
-    title: 'Laboratorium Komputer & Riset',
-    desc: '30 workstation PC spesifikasi tinggi terhubung LAN gigabit dan akses internet fiber optic untuk praktikum SPSS, AMOS, Mendeley, dan media ajar digital.',
+    title: 'Ruang Konsultasi',
+    desc: 'Dilengkapi denngan meja yang luas serta komputer untuk konsultasi dengan Dosen.',
     img: '/img/kelas 2.jpeg'
   },
   {
-    title: 'Pojok Baca & Referensi Jurnal',
-    desc: 'Koleksi ratusan skripsi alumni berprestasi, modul praktikum cetak, serta repositori akses gratis ke ribuan artikel jurnal SINTA dan Scopus.',
-    img: '/img/perpus.jpg'
+    title: 'Ruang Ujian',
+    desc: 'Ruangan Yang Nyaman untuk Ujian dan Diskusi Pembahasan Materi.',
+    img: '/img/Ruang Ujian.jpeg'
   },
 ];
 
@@ -248,7 +248,7 @@ export default function TentangPage() {
                   Didirikan sebagai sarana praktikum terintegrasi di lingkungan Jurusan Manajemen Pendidikan Islam FTK UIN Alauddin Makassar, Laboratorium MPI terus berevolusi dari ruang praktikum konvensional menjadi <strong>Pusat Riset Digital dan Simulasi Kepemimpinan Modern</strong>.
                 </p>
                 <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-                  Kini, laboratorium ini melayani ribuan mahasiswa dan akademisi setiap tahunnya melalui program praktikum microleading, bimbingan penulisan karya ilmiah, uji kompetensi, serta penerbitan E-Sertifikat terverifikasi sistem database cloud secara otomatis.
+                  Kini, laboratorium ini melayani mahasiswa dan akademisi setiap saat melalui program praktikum microleading, bimbingan penulisan karya ilmiah, uji kompetensi, serta penerbitan E-Sertifikat terverifikasi.
                 </p>
 
                 <div className="pt-2 flex flex-wrap gap-4">
@@ -459,7 +459,7 @@ export default function TentangPage() {
                     Kunjungi Laboratorium Kami
                   </div>
                   <h3 className="text-2xl sm:text-3xl font-bold text-slate-900 font-display mb-4">
-                    Gedung Fakultas Tarbiyah dan Keguruan Lantai 2
+                    Gedung A Fakultas Tarbiyah dan Keguruan Lantai 1
                   </h3>
                   <p className="text-xs sm:text-sm text-slate-600 leading-relaxed mb-6">
                     Kampus II UIN Alauddin Makassar, Jl. H. M. Yasin Limpo No. 36, Romangpolong, Kec. Somba Opu, Kabupaten Gowa, Sulawesi Selatan 92119.
@@ -483,7 +483,7 @@ export default function TentangPage() {
 
                 <div className="rounded-2xl overflow-hidden border border-purple-200/80 shadow-md aspect-16/9">
                   <img
-                    src="/img/campus1.jpg"
+                    src="/img/gedung_ftk.jpg"
                     alt="Kampus II UIN Alauddin Makassar"
                     className="w-full h-full object-cover"
                   />

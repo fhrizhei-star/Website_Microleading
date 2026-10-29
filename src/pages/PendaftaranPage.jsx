@@ -118,10 +118,10 @@ function RegistrationTicketModal({ ticket, onClose }) {
                 <p className="text-xs text-purple-200/90 mt-0.5">Fakultas Tarbiyah dan Keguruan UIN Alauddin Makassar</p>
 
                 {/* Big Registration Code Box */}
-                <div className="mt-4 p-3 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 inline-flex items-center gap-3">
-                  <div className="text-left">
+                <div className="mt-4 p-2.5 sm:p-3 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-between gap-2 max-w-full">
+                  <div className="text-left min-w-0 flex-1">
                     <p className="text-[10px] text-purple-200 uppercase font-semibold">Nomor Registrasi:</p>
-                    <p className="text-base sm:text-lg font-mono font-extrabold text-amber-300 tracking-wider">
+                    <p className="text-sm sm:text-lg font-mono font-extrabold text-amber-300 tracking-wider truncate">
                       {ticket.reg_code}
                     </p>
                   </div>
@@ -129,7 +129,7 @@ function RegistrationTicketModal({ ticket, onClose }) {
                     type="button"
                     data-html2canvas-ignore="true"
                     onClick={handleCopyCode}
-                    className="px-2.5 py-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
+                    className="px-2.5 py-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white text-xs font-bold transition-all flex items-center gap-1 cursor-pointer shrink-0"
                     title="Salin Kode Registrasi"
                   >
                     {copied ? <Check size={13} className="text-emerald-300" /> : <Copy size={13} />}
@@ -140,7 +140,7 @@ function RegistrationTicketModal({ ticket, onClose }) {
             </div>
 
             {/* Ticket Body with Cutout Circles */}
-            <div className="relative p-6 space-y-4 bg-white">
+            <div className="relative p-4 sm:p-6 space-y-4 bg-white overflow-hidden">
               {/* Left and right notch cutouts */}
               <div
                 data-html2canvas-ignore="true"
@@ -152,8 +152,8 @@ function RegistrationTicketModal({ ticket, onClose }) {
               />
 
               {/* QR Code & Identity Grid */}
-              <div className="flex flex-col sm:flex-row items-center gap-5 p-4 rounded-2xl bg-purple-50/60 border border-purple-100">
-                <div className="w-32 h-32 p-2 bg-white rounded-xl shadow-xs border border-purple-200 shrink-0 flex items-center justify-center">
+              <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-5 p-4 rounded-2xl bg-purple-50/60 border border-purple-100 overflow-hidden">
+                <div className="w-28 h-28 sm:w-32 sm:h-32 p-2 bg-white rounded-xl shadow-xs border border-purple-200 shrink-0 flex items-center justify-center">
                   <img
                     src={qrUrl}
                     crossOrigin="anonymous"
@@ -162,41 +162,41 @@ function RegistrationTicketModal({ ticket, onClose }) {
                   />
                 </div>
 
-                <div className="min-w-0 space-y-1.5 text-center sm:text-left flex-1">
+                <div className="min-w-0 space-y-1.5 text-center sm:text-left flex-1 w-full overflow-hidden">
                   <div>
                     <span className="text-[10px] font-bold text-slate-400 uppercase">Nama Peserta:</span>
-                    <p className="font-bold text-slate-900 text-sm leading-snug">{ticket?.nama || '-'}</p>
+                    <p className="font-bold text-slate-900 text-sm leading-snug break-words">{ticket?.nama || '-'}</p>
                   </div>
                   <div>
                     <span className="text-[10px] font-bold text-slate-400 uppercase">NIM / NIP:</span>
-                    <p className="font-mono text-xs font-bold text-purple-700">{ticket?.nim_nip || '-'}</p>
+                    <p className="font-mono text-xs font-bold text-purple-700 break-all">{ticket?.nim_nip || '-'}</p>
                   </div>
                   <div>
                     <span className="text-[10px] font-bold text-slate-400 uppercase">Instansi:</span>
-                    <p className="text-xs text-slate-600 truncate">{ticket?.instansi || 'UIN Alauddin Makassar'}</p>
+                    <p className="text-xs text-slate-600 break-words">{ticket?.instansi || 'UIN Alauddin Makassar'}</p>
                   </div>
                 </div>
               </div>
 
               {/* Workshop Session Details */}
-              <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50 space-y-2 text-xs">
+              <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50 space-y-2 text-xs overflow-hidden">
                 <p className="text-[10px] font-extrabold text-purple-700 uppercase tracking-wider">Detail Sesi Kegiatan:</p>
-                <h4 className="font-bold text-slate-900 text-sm leading-snug">{ticket?.workshop_title || 'Workshop Pelatihan'}</h4>
+                <h4 className="font-bold text-slate-900 text-xs sm:text-sm leading-snug break-words">{ticket?.workshop_title || 'Workshop Pelatihan'}</h4>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-slate-600 pt-1">
-                  <div className="flex items-center gap-1.5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-slate-600 pt-1 text-xs">
+                  <div className="flex items-center gap-1.5 min-w-0 overflow-hidden">
                     <User size={13} className="text-purple-600 shrink-0" />
                     <span className="truncate">{ticket?.speaker || '-'}</span>
                   </div>
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1.5 min-w-0 overflow-hidden">
                     <Calendar size={13} className="text-purple-600 shrink-0" />
-                    <span>{formatIndoDate(ticket?.workshop_date)}</span>
+                    <span className="truncate">{formatIndoDate(ticket?.workshop_date)}</span>
                   </div>
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1.5 min-w-0 overflow-hidden">
                     <Clock size={13} className="text-purple-600 shrink-0" />
-                    <span>{ticket?.workshop_time || '-'}</span>
+                    <span className="truncate">{ticket?.workshop_time || '-'}</span>
                   </div>
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1.5 min-w-0 overflow-hidden">
                     <MapPin size={13} className="text-rose-500 shrink-0" />
                     <span className="truncate">{ticket?.workshop_location || 'Lab Microleading MPI'}</span>
                   </div>
@@ -204,17 +204,17 @@ function RegistrationTicketModal({ ticket, onClose }) {
               </div>
 
               {/* Instructions */}
-              <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-[11px] text-amber-900 flex items-start gap-2">
+              <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-[11px] text-amber-900 flex items-start gap-2 overflow-hidden">
                 <AlertCircle size={15} className="text-amber-600 shrink-0 mt-0.5" />
-                <p className="leading-relaxed">
+                <p className="leading-relaxed break-words">
                   <strong>Petunjuk Hari H:</strong> Tunjukkan kartu registrasi ini kepada panitia atau masukkan <strong>NIM {ticket.nim_nip}</strong> di halaman presensi digital untuk klaim E-Sertifikat otomatis.
                 </p>
               </div>
 
               {/* Card Footer Stamp / Verification */}
-              <div className="pt-2 border-t border-purple-100 flex items-center justify-between text-[10px] text-slate-400">
-                <span className="font-semibold text-purple-800">Lab Microleading MPI FTK UIN Alauddin</span>
-                <span className="text-emerald-700 font-medium">✓ Terverifikasi Digital</span>
+              <div className="pt-2 border-t border-purple-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1 text-[10px] text-slate-400">
+                <span className="font-semibold text-purple-800 break-words max-w-full">Lab Microleading MPI FTK UIN Alauddin</span>
+                <span className="text-emerald-700 font-medium shrink-0">✓ Terverifikasi Digital</span>
               </div>
             </div>
           </div>

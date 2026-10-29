@@ -325,36 +325,36 @@ function ThankYouModal({ record, onClose, onGoToCek, onDownload }) {
           </div>
 
           {/* Participant Bento Detail Box */}
-          <div className="rounded-2xl p-4 bg-gradient-to-br from-purple-50/80 via-white to-purple-50/40 border border-purple-200/80 text-left space-y-3 shadow-xs">
-            <div className="flex items-center gap-3">
+          <div className="rounded-2xl p-4 bg-gradient-to-br from-purple-50/80 via-white to-purple-50/40 border border-purple-200/80 text-left space-y-3 shadow-xs overflow-hidden">
+            <div className="flex items-center gap-3 min-w-0">
               <div className="w-10 h-10 rounded-xl bg-purple-600 text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-xs">
                 <User size={18} />
               </div>
-              <div className="min-w-0 flex-1">
+              <div className="min-w-0 flex-1 overflow-hidden">
                 <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Nama Peserta</p>
-                <h4 className="font-display font-extrabold text-purple-950 text-base sm:text-lg truncate">
+                <h4 className="font-display font-extrabold text-purple-950 text-sm sm:text-base break-words">
                   {record.nama}
                 </h4>
               </div>
             </div>
 
             <div className="pt-2 border-t border-purple-100 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-              <div>
+              <div className="min-w-0 overflow-hidden">
                 <p className="text-[10px] text-slate-400 font-bold uppercase">Identitas / NIM</p>
-                <p className="font-semibold text-slate-800 truncate">{record.identitas} ({record.instansi})</p>
+                <p className="font-semibold text-slate-800 break-words">{record.identitas} ({record.instansi})</p>
               </div>
-              <div>
+              <div className="min-w-0 overflow-hidden">
                 <p className="text-[10px] text-slate-400 font-bold uppercase">Kegiatan</p>
-                <p className="font-semibold text-purple-800 truncate">{record.workshop_title}</p>
+                <p className="font-semibold text-purple-800 break-words">{record.workshop_title}</p>
               </div>
             </div>
 
             <div className="p-2.5 rounded-xl bg-white border border-purple-100 flex items-center justify-between gap-2 text-xs font-mono">
-              <span className="text-slate-500 truncate">No. Reg: <strong className="text-purple-950">{record.cert_number}</strong></span>
+              <span className="text-slate-500 min-w-0 truncate text-[11px] sm:text-xs">No. Reg: <strong className="text-purple-950 break-all">{record.cert_number}</strong></span>
               <button
                 type="button"
                 onClick={handleCopy}
-                className="inline-flex items-center gap-1 text-[11px] font-bold text-purple-700 hover:text-purple-900 px-2 py-0.5 rounded-md hover:bg-purple-50 transition-colors shrink-0"
+                className="inline-flex items-center gap-1 text-[11px] font-bold text-purple-700 hover:text-purple-900 px-2 py-0.5 rounded-md hover:bg-purple-50 transition-colors shrink-0 cursor-pointer"
               >
                 <Copy size={12} />
                 <span>{copied ? 'Tersalin!' : 'Salin'}</span>
@@ -1295,24 +1295,24 @@ function CertSearch({ initialQuery = '' }) {
       )}
 
       {/* Modern Search Input Bar */}
-      <div className="flex gap-2.5">
-        <div className="relative flex-1">
-          <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-purple-600" />
+      <div className="flex gap-2 sm:gap-2.5 w-full">
+        <div className="relative flex-1 min-w-0">
+          <Search size={18} className="absolute left-3.5 sm:left-4 top-1/2 -translate-y-1/2 text-purple-600 pointer-events-none" />
           <input
             type="text"
             value={query}
             onChange={e => setQuery(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && search(query)}
-            placeholder="Cari berdasarkan nama lengkap, NIM, institusi..."
-            className="w-full pl-11 pr-4 py-3.5 rounded-2xl border-2 border-purple-200/80 bg-white text-sm text-slate-900 placeholder:text-slate-400 font-semibold focus:border-purple-600 focus:ring-4 focus:ring-purple-500/10 focus:outline-none transition-all shadow-xs"
+            placeholder="Cari nama, NIM, institusi..."
+            className="w-full pl-10 sm:pl-11 pr-3 sm:pr-4 py-3 sm:py-3.5 rounded-2xl border-2 border-purple-200/80 bg-white text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 font-semibold focus:border-purple-600 focus:ring-4 focus:ring-purple-500/10 focus:outline-none transition-all shadow-xs"
           />
         </div>
         <button
           onClick={() => { playClick(); search(query); }}
-          className="btn-shimmer px-6 py-3.5 rounded-2xl font-bold text-sm text-white bg-gradient-to-r from-purple-600 to-indigo-600 shadow-md shadow-purple-600/25 hover:shadow-lg hover:shadow-purple-600/35 flex items-center gap-2 shrink-0 transition-all cursor-pointer"
+          className="btn-shimmer px-4 sm:px-6 py-3 sm:py-3.5 rounded-2xl font-bold text-xs sm:text-sm text-white bg-gradient-to-r from-purple-600 to-indigo-600 shadow-md shadow-purple-600/25 hover:shadow-lg hover:shadow-purple-600/35 flex items-center justify-center gap-1.5 sm:gap-2 shrink-0 transition-all cursor-pointer"
         >
-          <Search size={16} />
-          <span className="hidden sm:inline">Cari Data</span>
+          <Search size={15} />
+          <span>Cari</span>
         </button>
       </div>
 
@@ -1336,44 +1336,44 @@ function CertSearch({ initialQuery = '' }) {
         {results.map(rec => (
           <div
             key={rec.id}
-            className="group rounded-3xl p-5 bg-gradient-to-br from-white/95 via-purple-50/20 to-white/90 border border-purple-200/90 shadow-sm hover:shadow-md hover:border-purple-300 transition-all flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4"
+            className="group rounded-3xl p-4 sm:p-5 bg-gradient-to-br from-white/95 via-purple-50/20 to-white/90 border border-purple-200/90 shadow-sm hover:shadow-md hover:border-purple-300 transition-all flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 overflow-hidden w-full"
           >
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-bold border border-emerald-200">
-                  <Check size={11} /> Sertifikat Terverifikasi Resmi
+            <div className="w-full min-w-0 flex-1 overflow-hidden">
+              <div className="flex items-center gap-1.5 sm:gap-2 mb-2 flex-wrap">
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] sm:text-[11px] font-bold border border-emerald-200 shrink-0">
+                  <Check size={11} /> Sertifikat Terverifikasi
                 </span>
-                <span className="font-mono text-xs px-2.5 py-0.5 rounded-lg bg-slate-100 text-slate-600 font-semibold border border-slate-200">
+                <span className="font-mono text-[11px] sm:text-xs px-2.5 py-0.5 rounded-lg bg-slate-100 text-slate-600 font-semibold border border-slate-200 break-all">
                   {rec.cert_number}
                 </span>
                 {rec.bukti_file && (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-purple-100 text-purple-800 text-[10px] font-bold">
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-purple-100 text-purple-800 text-[10px] font-bold shrink-0">
                     📎 Bukti Terlampir
                   </span>
                 )}
               </div>
-              <h4 className="font-display font-extrabold text-slate-900 text-base mb-0.5 truncate group-hover:text-purple-900 transition-colors">
+              <h4 className="font-display font-extrabold text-slate-900 text-sm sm:text-base mb-1 break-words group-hover:text-purple-900 transition-colors">
                 {rec.nama}
               </h4>
-              <p className="text-xs text-slate-500 truncate">
-                {rec.instansi} • NIM: {rec.identitas}
+              <p className="text-xs text-slate-500 break-words">
+                {rec.instansi} • <span className="font-mono text-purple-700 font-semibold">NIM: {rec.identitas}</span>
               </p>
-              <p className="text-xs font-bold text-purple-700 mt-1 truncate">
+              <p className="text-xs font-bold text-purple-700 mt-1 break-words line-clamp-2">
                 🏆 {rec.workshop_title}
               </p>
             </div>
 
             {/* Action Buttons: Ambil Sertifikat (Membuka Lightbox) & Unduh Langsung */}
-            <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap shrink-0">
+            <div className="flex items-center gap-2 w-full lg:w-auto justify-end sm:justify-start shrink-0 pt-3 lg:pt-0 border-t lg:border-t-0 border-purple-100/80">
               {/* Button 1: Ambil Sertifikat (Membuka Lightbox View) */}
               <button
                 type="button"
                 onClick={() => { playClick(); setPreviewRecord(rec); }}
-                className="btn-shimmer px-5 py-2.5 rounded-2xl text-xs font-bold text-white bg-gradient-to-r from-purple-600 via-violet-600 to-indigo-600 shadow-md shadow-purple-600/25 hover:shadow-lg hover:shadow-purple-600/40 flex items-center gap-2 whitespace-nowrap transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+                className="btn-shimmer flex-1 sm:flex-initial px-4 sm:px-5 py-2.5 rounded-2xl text-xs font-bold text-white bg-gradient-to-r from-purple-600 via-violet-600 to-indigo-600 shadow-md shadow-purple-600/25 hover:shadow-lg hover:shadow-purple-600/40 flex items-center justify-center gap-2 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
                 title="Buka dan ambil e-sertifikat resmi Anda"
               >
-                <Award size={15} className="text-amber-300" />
-                <span>Ambil Sertifikat</span>
+                <Award size={15} className="text-amber-300 shrink-0" />
+                <span className="truncate">Ambil Sertifikat</span>
               </button>
 
               {/* Button 2: Unduh Langsung .PDF */}
@@ -1381,7 +1381,7 @@ function CertSearch({ initialQuery = '' }) {
                 type="button"
                 onClick={() => handleDownload(rec)}
                 disabled={downloadingId === rec.id}
-                className="p-2.5 rounded-2xl bg-white hover:bg-purple-50 border border-purple-200 text-purple-700 transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+                className="p-2.5 rounded-2xl bg-white hover:bg-purple-50 border border-purple-200 text-purple-700 transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98] shrink-0"
                 title="Unduh Langsung Sertifikat Resmi (.PDF)"
               >
                 <Download size={15} className={downloadingId === rec.id ? 'animate-bounce text-purple-600' : ''} />

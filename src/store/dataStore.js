@@ -26,13 +26,17 @@ const DEFAULT_WORKSHOPS = [
     id: "ws_1",
     title: "Workshop Penulisan Karya Tulis Ilmiah & Publikasi Jurnal Nasional",
     speaker: "Dr. H. Muhammad Ilyas, M.Pd.",
+    schedule_type: "single",
     date: "2026-10-26",
     time: "08:30 - 12:00 WITA",
     location: "Laboratorium Microleading MPI",
     description: "Pelatihan teknis penyusunan naskah artikel jurnal, sitasi akademik, dan kiat tembus jurnal SINTA terakreditasi.",
     status: "open",
+    attendance_mode: "open",
     is_attendance_open: true,
     attendance_pin: "MPI26",
+    has_certificate: true,
+    require_registration: true,
     cert_bg: null,
     cert_layout: null,
   },
@@ -40,13 +44,17 @@ const DEFAULT_WORKSHOPS = [
     id: "ws_2",
     title: "Pelatihan Public Speaking & Leadership Santri Modern",
     speaker: "Ustadz Rahmat Hidayat, M.I.Kom.",
+    schedule_type: "single",
     date: "2026-10-28",
     time: "09:00 - 12:00 WITA",
     location: "Aula FTK Kampus II UINAM",
     description: "Meningkatkan kemampuan komunikasi vokal, retorika panggung, dan seni berbicara persuasif bagi calon pendidik.",
     status: "open",
+    attendance_mode: "open",
     is_attendance_open: true,
     attendance_pin: "SANTRI88",
+    has_certificate: true,
+    require_registration: true,
     cert_bg: null,
     cert_layout: null,
   },
@@ -54,13 +62,35 @@ const DEFAULT_WORKSHOPS = [
     id: "ws_3",
     title: "Workshop Pemanfaatan AI & Media Digital dalam Pembelajaran Islam",
     speaker: "Fahri Pratama, S.Kom., M.T.",
-    date: "2026-10-30",
+    schedule_type: "single",
+    date: "2026-10-31",
     time: "08:30 - 11:30 WITA",
     location: "Lab Komputer & Multimedia MPI",
     description: "Pengenalan teknologi AI etis dan pembuatan media ajar berbasis web interaktif untuk pendidik era digital.",
     status: "open",
-    is_attendance_open: false,
+    attendance_mode: "auto",
+    is_attendance_open: null,
     attendance_pin: "AI2026",
+    has_certificate: true,
+    require_registration: true,
+    cert_bg: null,
+    cert_layout: null,
+  },
+  {
+    id: "ws_4",
+    title: "Praktikum Laboratorium Microleading & Simulasi Kepemimpinan",
+    speaker: "Tim Laboratorium MPI",
+    schedule_type: "recurring",
+    date: "Setiap Kamis (Mingguan)",
+    time: "13:30 - 15:30 WITA",
+    location: "Laboratorium Microleading MPI",
+    description: "Sesi praktikum rutin mingguan mahasiswa MPI untuk simulasi kepemimpinan, manajemen kelas, dan administrasi pendidikan.",
+    status: "open",
+    attendance_mode: "auto",
+    is_attendance_open: null,
+    attendance_pin: "",
+    has_certificate: false,
+    require_registration: true,
     cert_bg: null,
     cert_layout: null,
   },
@@ -248,14 +278,118 @@ export function initializeStore() {
 }
 
 // ========================
-// WORKSHOPS
+// WORKSHOPS & HYBRID ATTENDANCE
 // ========================
+
+/**
+ * Waktu Real-Time Zona WITA (Asia/Makassar, UTC+8)
+ * Laboratorium MPI FTK Kampus II UIN Alauddin Makassar
+ */
+export function getMakassarTimeInfo(dateObj = new Date()) {
+  try {
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Asia/Makassar',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    });
+    const idFormatter = new Intl.DateTimeFormat('id-ID', {
+      timeZone: 'Asia/Makassar',
+      weekday: 'long',
+    });
+    const parts = formatter.formatToParts(dateObj);
+    const map = {};
+    parts.forEach(p => { map[p.type] = p.value; });
+    const year = map.year;
+    const month = map.month;
+    const day = map.day;
+    const hour = parseInt(map.hour, 10);
+    const minute = parseInt(map.minute, 10);
+    const weekday = idFormatter.format(dateObj).toLowerCase();
+    const todayStr = `${year}-${month}-${day}`;
+    const currentMinutes = hour * 60 + minute;
+    const formattedTime = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')} WITA`;
+
+    return { todayStr, weekday, hour, minute, currentMinutes, formattedTime };
+  } catch {
+    const d = new Date(dateObj);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const hour = d.getHours();
+    const minute = d.getMinutes();
+    const days = ['minggu', 'senin', 'selasa', 'rabu', 'kamis', 'jumat', 'sabtu'];
+    return {
+      todayStr: `${year}-${month}-${day}`,
+      weekday: days[d.getDay()],
+      hour,
+      minute,
+      currentMinutes: hour * 60 + minute,
+      formattedTime: `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')} WITA`,
+    };
+  }
+}
+
+/**
+ * Parsing rentang jam (cth: "08:30 - 12:00 WITA" atau "13:30 - 15:30")
+ * Menghasilkan startMinutes dan endMinutes dari 00:00 (tengah malam)
+ */
+export function parseTimeRange(timeStr) {
+  if (!timeStr || typeof timeStr !== 'string') return null;
+  const match = timeStr.match(/(\d{1,2})[:.](\d{2})\s*(?:-|s\/d|sampai)\s*(\d{1,2})[:.](\d{2})/i);
+  if (!match) return null;
+  const startH = parseInt(match[1], 10);
+  const startM = parseInt(match[2], 10);
+  const endH = parseInt(match[3], 10);
+  const endM = parseInt(match[4], 10);
+  return {
+    startMinutes: startH * 60 + startM,
+    endMinutes: endH * 60 + endM,
+    startFormatted: `${String(startH).padStart(2, '0')}:${String(startM).padStart(2, '0')}`,
+    endFormatted: `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`,
+  };
+}
+
+/**
+ * Deteksi apakah jadwal hari rutin berkala cocok dengan hari saat ini di Makassar
+ */
+export function isRecurringDayMatching(datePattern, currentWeekday) {
+  if (!datePattern || typeof datePattern !== 'string') return true;
+  const lower = datePattern.toLowerCase();
+  const allDays = ['senin', 'selasa', 'rabu', 'kamis', 'jumat', 'sabtu', 'minggu'];
+  const matchedDays = allDays.filter(d => {
+    if (d === 'jumat') return lower.includes('jumat') || lower.includes("jum'at");
+    return lower.includes(d);
+  });
+  if (matchedDays.length > 0) {
+    if (currentWeekday === 'jumat') return matchedDays.includes('jumat');
+    return matchedDays.includes(currentWeekday);
+  }
+  // Pola umum tanpa nama hari spesifik (misal: "Jadwal Rutin Mingguan") berlaku pada hari kerja kampus (Senin - Jumat)
+  return ['senin', 'selasa', 'rabu', 'kamis', 'jumat'].includes(currentWeekday);
+}
+
 export async function getAllWorkshops() {
   if (isFirebaseConfigured && db) {
     try {
       const snap = await getDocs(collection(db, 'workshops'));
       if (!snap.empty) {
-        const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const list = snap.docs.map(d => {
+          const data = d.data();
+          const scheduleType = data.schedule_type || (data.date && data.date.includes('-') && data.date.length === 10 ? 'single' : 'recurring');
+          const attMode = data.attendance_mode || (data.is_attendance_open === true ? 'open' : data.is_attendance_open === false ? 'closed' : 'auto');
+          return {
+            id: d.id,
+            ...data,
+            schedule_type: scheduleType,
+            attendance_mode: attMode,
+            has_certificate: data.has_certificate !== false,
+            require_registration: data.require_registration !== false,
+          };
+        });
         setStore("mpi_workshops", list);
         return list;
       }
@@ -265,7 +399,18 @@ export async function getAllWorkshops() {
   }
   await delay();
   const rawList = getStore("mpi_workshops") || [];
-  const list = rawList.map((w, idx) => ({ ...w, id: w.id || `ws_${idx + 1}` }));
+  const list = rawList.map((w, idx) => {
+    const scheduleType = w.schedule_type || (w.date && w.date.includes('-') && w.date.length === 10 ? 'single' : 'recurring');
+    const attMode = w.attendance_mode || (w.is_attendance_open === true ? 'open' : w.is_attendance_open === false ? 'closed' : 'auto');
+    return {
+      ...w,
+      id: w.id || `ws_${idx + 1}`,
+      schedule_type: scheduleType,
+      attendance_mode: attMode,
+      has_certificate: w.has_certificate !== false,
+      require_registration: w.require_registration !== false,
+    };
+  });
   return list;
 }
 
@@ -275,103 +420,272 @@ export async function getWorkshops() {
 }
 
 /**
- * Evaluasi 3 Lapis Keamanan Presensi Workshop:
- * 1. Date-Lock: Tanggal pelaksanaan vs Tanggal hari ini
- * 2. Saklar Admin: is_attendance_open (Buka / Tutup Presensi Hari-H)
- * 3. Token / PIN Presensi: attendance_pin verifikasi rahasia ruangan
+ * SISTEM KONTROL PRESENSI HYBRID (OTOMATIS + MANUAL OVERRIDE):
+ * 1. Mode Otomatis ('auto'): Mengikuti jadwal hari & jam WITA secara presisi (Window Waktu).
+ * 2. Mode Manual Override Buka ('open'): Hak veto Admin untuk membuka presensi kapan saja (simulasi/uji coba/sesi live).
+ * 3. Mode Manual Override Tutup ('closed'): Hak veto Admin untuk mengunci presensi kapan saja.
+ * 4. Token / PIN Presensi: attendance_pin verifikasi rahasia ruangan fisik/proyektor.
  */
 export function getWorkshopAttendanceStatus(workshop) {
   if (!workshop) {
     return {
       allowed: false,
       code: 'NOT_FOUND',
+      mode: 'closed',
       statusBadge: 'Pilih Workshop',
       reason: 'Silakan tentukan workshop yang Anda ikuti.',
       requiresPin: false,
-      pin: ''
+      pin: '',
     };
   }
 
-  const now = new Date();
-  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-  const isFutureDate = Boolean(workshop.date && workshop.date > todayStr);
   const hasPin = Boolean(workshop.attendance_pin && String(workshop.attendance_pin).trim().length > 0);
   const pin = hasPin ? String(workshop.attendance_pin).trim() : '';
 
-  // LAPIS 2 (Prioritas Admin Override): Jika admin membuka presensi secara live di ruangan
-  if (workshop.is_attendance_open === true) {
+  // Jika kegiatan dinonaktifkan/ditutup oleh panitia
+  if (workshop.status === 'closed') {
+    return {
+      allowed: false,
+      code: 'CLOSED',
+      mode: 'closed',
+      statusBadge: 'Kegiatan Ditutup',
+      requiresPin: hasPin,
+      pin,
+      reason: 'Kegiatan workshop/praktikum ini telah selesai atau ditutup oleh pengelola lab.',
+    };
+  }
+
+  // Tentukan mode presensi efektif ('open', 'closed', atau 'auto')
+  let effectiveMode = workshop.attendance_mode;
+  if (!effectiveMode) {
+    if (workshop.is_attendance_open === true) {
+      effectiveMode = 'open';
+    } else if (workshop.is_attendance_open === false && workshop.schedule_type === 'single') {
+      effectiveMode = 'auto';
+    } else {
+      effectiveMode = 'auto';
+    }
+  }
+
+  // 1. HAK VETO ADMIN: MANUAL OVERRIDE (BUKA)
+  if (effectiveMode === 'open') {
     return {
       allowed: true,
       code: 'OPEN_LIVE',
-      statusBadge: 'Presensi Hari-H Aktif',
+      mode: 'open',
+      statusBadge: 'Presensi Dibuka Manual',
       requiresPin: hasPin,
-      pin: pin,
-      reason: 'Presensi telah dibuka resmi oleh panitia di ruangan.'
+      pin,
+      reason: 'Presensi dibuka langsung oleh panitia/asisten lab di ruangan (Hak Veto Admin aktif).',
     };
   }
 
-  // LAPIS 2: Jika admin secara eksplisit mengunci/menutup presensi
-  if (workshop.is_attendance_open === false) {
-    if (isFutureDate) {
-      return {
-        allowed: false,
-        code: 'DATE_LOCKED',
-        statusBadge: 'Presensi Belum Dibuka',
-        requiresPin: hasPin,
-        pin: pin,
-        reason: `Presensi belum dibuka. Kegiatan baru akan dilaksanakan pada ${workshop.date} (${workshop.time || 'Hari-H'}). Silakan simpan E-Ticket Anda untuk digunakan saat kegiatan berlangsung.`
-      };
-    }
+  // 2. HAK VETO ADMIN: MANUAL OVERRIDE (KUNCI)
+  if (effectiveMode === 'closed') {
     return {
       allowed: false,
       code: 'ADMIN_CLOSED',
-      statusBadge: 'Presensi Terkunci',
+      mode: 'closed',
+      statusBadge: 'Presensi Dikunci Manual',
       requiresPin: hasPin,
-      pin: pin,
-      reason: 'Sesi presensi untuk kegiatan ini belum diaktifkan oleh panitia di ruangan.'
+      pin,
+      reason: 'Presensi sedang dikunci manual oleh panitia/asisten lab di ruangan.',
     };
   }
 
-  // LAPIS 1: Fallback jika workshop data lama belum memiliki flag is_attendance_open
+  // 3. MODE OTOMATIS (AUTO SCHEDULE WINDOW)
+  // Mengikuti kalender dan jam WITA (Makassar)
+  const timeInfo = getMakassarTimeInfo();
+  const { todayStr, weekday, currentMinutes, formattedTime } = timeInfo;
+  const timeRange = parseTimeRange(workshop.time);
+
+  // Buffer toleransi: 15 menit sebelum mulai & 15 menit setelah selesai
+  const bufferBefore = 15;
+  const bufferAfter = 15;
+
+  // A. Jadwal Rutin Berkala (Praktikum Lab)
+  if (workshop.schedule_type === 'recurring') {
+    const isDayMatch = isRecurringDayMatching(workshop.date, weekday);
+    const dayLabel = weekday.charAt(0).toUpperCase() + weekday.slice(1);
+
+    if (!isDayMatch) {
+      return {
+        allowed: false,
+        code: 'DAY_LOCKED',
+        mode: 'auto',
+        statusBadge: 'Bukan Hari Praktikum',
+        requiresPin: hasPin,
+        pin,
+        reason: `Presensi otomatis dibuka setiap ${workshop.date || 'hari praktikum'} pada jam ${workshop.time || ''}. Hari ini (${dayLabel}) presensi dikunci.`,
+      };
+    }
+
+    if (timeRange) {
+      const openStart = timeRange.startMinutes - bufferBefore;
+      const openEnd = timeRange.endMinutes + bufferAfter;
+
+      if (currentMinutes < openStart) {
+        return {
+          allowed: false,
+          code: 'TIME_LOCKED_EARLY',
+          mode: 'auto',
+          statusBadge: 'Menunggu Jam Praktikum',
+          requiresPin: hasPin,
+          pin,
+          reason: `Hari ini (${dayLabel}) adalah hari praktikum! Presensi dibuka otomatis mulai pukul ${timeRange.startFormatted} WITA (Waktu sekarang: ${formattedTime}).`,
+        };
+      }
+
+      if (currentMinutes > openEnd) {
+        return {
+          allowed: false,
+          code: 'TIME_LOCKED_LATE',
+          mode: 'auto',
+          statusBadge: 'Sesi Hari Ini Selesai',
+          requiresPin: hasPin,
+          pin,
+          reason: `Sesi praktikum hari ini telah selesai pada pukul ${timeRange.endFormatted} WITA. Presensi otomatis ditutup.`,
+        };
+      }
+
+      return {
+        allowed: true,
+        code: 'OPEN_AUTO',
+        mode: 'auto',
+        statusBadge: 'Presensi Praktikum Aktif',
+        requiresPin: hasPin,
+        pin,
+        reason: `Presensi terbuka otomatis sesuai jam praktikum laboratorium (${workshop.time}).`,
+      };
+    }
+
+    // Pola hari cocok tanpa batasan jam spesifik
+    return {
+      allowed: true,
+      code: 'OPEN_AUTO',
+      mode: 'auto',
+      statusBadge: 'Presensi Praktikum Aktif',
+      requiresPin: hasPin,
+      pin,
+      reason: `Presensi terbuka otomatis sesuai hari praktikum hari ini (${dayLabel}).`,
+    };
+  }
+
+  // B. Tanggal Pasti (Sekali Acara / Workshop)
+  const isFutureDate = Boolean(workshop.date && workshop.date > todayStr);
+  const isPastDate = Boolean(workshop.date && workshop.date < todayStr);
+  const isToday = Boolean(workshop.date && workshop.date === todayStr);
+
   if (isFutureDate) {
     return {
       allowed: false,
       code: 'DATE_LOCKED',
-      statusBadge: 'Presensi Terkunci (Hari-H)',
+      mode: 'auto',
+      statusBadge: 'Presensi Belum Dibuka',
       requiresPin: hasPin,
-      pin: pin,
-      reason: `Presensi baru dapat diakses pada hari pelaksanaan kegiatan: ${workshop.date}.`
+      pin,
+      reason: `Presensi belum dibuka. Kegiatan baru akan diselenggarakan pada ${workshop.date} (${workshop.time || 'Hari-H'}). Simpan E-Ticket Anda untuk digunakan saat kegiatan berlangsung.`,
     };
   }
 
-  // Jika tanggal sudah hari ini / lewat dan status pendaftaran masih open
-  if (workshop.status === 'open') {
+  if (isPastDate) {
+    return {
+      allowed: false,
+      code: 'CLOSED',
+      mode: 'auto',
+      statusBadge: 'Kegiatan Selesai',
+      requiresPin: hasPin,
+      pin,
+      reason: `Kegiatan ini telah selesai diselenggarakan pada ${workshop.date} dan presensi telah ditutup.`,
+    };
+  }
+
+  // Jika hari ini adalah Hari-H
+  if (isToday) {
+    if (timeRange) {
+      const openStart = timeRange.startMinutes - bufferBefore;
+      const openEnd = timeRange.endMinutes + bufferAfter;
+
+      if (currentMinutes < openStart) {
+        return {
+          allowed: false,
+          code: 'TIME_LOCKED_EARLY',
+          mode: 'auto',
+          statusBadge: 'Menunggu Jam Kegiatan',
+          requiresPin: hasPin,
+          pin,
+          reason: `Hari ini adalah hari kegiatan! Presensi akan dibuka otomatis mulai pukul ${timeRange.startFormatted} WITA (Waktu sekarang: ${formattedTime}).`,
+        };
+      }
+
+      if (currentMinutes > openEnd) {
+        return {
+          allowed: false,
+          code: 'TIME_LOCKED_LATE',
+          mode: 'auto',
+          statusBadge: 'Sesi Hari Ini Selesai',
+          requiresPin: hasPin,
+          pin,
+          reason: `Sesi kegiatan hari ini telah selesai pada pukul ${timeRange.endFormatted} WITA. Presensi resmi ditutup.`,
+        };
+      }
+
+      return {
+        allowed: true,
+        code: 'OPEN_AUTO',
+        mode: 'auto',
+        statusBadge: 'Presensi Hari-H Aktif',
+        requiresPin: hasPin,
+        pin,
+        reason: `Presensi dibuka otomatis sesuai jam kegiatan Hari-H (${workshop.time}).`,
+      };
+    }
+
     return {
       allowed: true,
       code: 'OPEN_AUTO',
-      statusBadge: 'Presensi Dibuka',
+      mode: 'auto',
+      statusBadge: 'Presensi Hari-H Aktif',
       requiresPin: hasPin,
-      pin: pin,
-      reason: 'Presensi dibuka.'
+      pin,
+      reason: 'Presensi dibuka otomatis pada hari pelaksanaan kegiatan.',
     };
   }
 
   return {
     allowed: false,
     code: 'CLOSED',
-    statusBadge: 'Kegiatan Selesai',
+    mode: 'auto',
+    statusBadge: 'Presensi Ditutup',
     requiresPin: hasPin,
-    pin: pin,
-    reason: 'Kegiatan workshop ini telah selesai dan presensi telah ditutup.'
+    pin,
+    reason: 'Sesi presensi untuk kegiatan ini belum aktif.',
   };
 }
 
+/**
+ * Update Mode Presensi (Otomatis / Buka Manual / Kunci Manual)
+ */
+export async function setWorkshopAttendanceMode(id, mode) {
+  const isAttendanceOpen = mode === 'open' ? true : mode === 'closed' ? false : null;
+  return await updateWorkshop(id, {
+    attendance_mode: mode,
+    is_attendance_open: isAttendanceOpen,
+  });
+}
+
 export async function createWorkshop(data) {
+  const attMode = data.attendance_mode || (data.is_attendance_open === true ? 'open' : data.is_attendance_open === false ? 'closed' : 'auto');
+  const isAttOpen = attMode === 'open' ? true : attMode === 'closed' ? false : null;
   const newWData = {
     ...data,
     status: data.status || "open",
-    is_attendance_open: data.is_attendance_open ?? false,
+    schedule_type: data.schedule_type || 'single',
+    attendance_mode: attMode,
+    is_attendance_open: isAttOpen,
     attendance_pin: data.attendance_pin ? String(data.attendance_pin).trim() : "",
+    has_certificate: data.has_certificate !== false,
+    require_registration: data.require_registration !== false,
     created_at: new Date().toISOString()
   };
   if (isFirebaseConfigured && db) {
@@ -432,7 +746,11 @@ export async function getAttendance(queryStr = "") {
       const q = query(collection(db, 'attendance'), orderBy('timestamp', 'desc'));
       const snap = await getDocs(q);
       fromFirebase = true;
-      records = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      records = snap.docs.map(d => ({
+        id: d.id,
+        ...d.data(),
+        has_certificate: d.data().has_certificate !== false,
+      }));
       setStore("mpi_attendance", records);
     } catch (err) {
       console.warn('⚠️ [Firestore] getAttendance error:', err.message);
@@ -441,7 +759,10 @@ export async function getAttendance(queryStr = "") {
 
   if (!fromFirebase) {
     await delay();
-    records = getStore("mpi_attendance") || [];
+    records = (getStore("mpi_attendance") || []).map(r => ({
+      ...r,
+      has_certificate: r.has_certificate !== false,
+    }));
   }
 
   if (queryStr) {
@@ -474,22 +795,72 @@ export async function submitAttendance(data) {
       const userPin = String(data.pin || '').trim().toUpperCase();
       const expectedPin = String(access.pin || '').trim().toUpperCase();
       if (!userPin) {
-        throw new Error('PIN Presensi Hari-H wajib dimasukkan untuk mengklaim sertifikat.');
+        throw new Error('PIN Presensi Hari-H wajib dimasukkan untuk mengonfirmasi kehadiran.');
       }
       if (userPin !== expectedPin) {
         throw new Error('PIN Presensi tidak valid! Silakan periksa PIN yang ditampilkan oleh panitia di ruangan.');
       }
     }
+
+    // Kebijakan: Wajib mendaftar terlebih dahulu sebelum presensi
+    if (workshop.require_registration !== false) {
+      const matchReg = await findRegistrationByNimOrCode(data.identitas, data.workshop_id);
+      if (!matchReg) {
+        const err = new Error(`NIM/Identitas "${data.identitas}" belum terdaftar pada kegiatan "${workshop.title}". Silakan lakukan pendaftaran terlebih dahulu.`);
+        err.code = 'NOT_REGISTERED';
+        err.workshop = workshop;
+        throw err;
+      }
+    }
   }
 
-  const certNum = `CERT/MPI/${new Date().getFullYear()}/${String(records.length + 1).padStart(4, "0")}`;
+  const now = new Date();
+  const todayDateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const isRecurring = workshop?.schedule_type === 'recurring';
+
+  // Anti-duplikasi presensi di backend:
+  if (isRecurring) {
+    // Untuk kegiatan rutin: 1 NIM hanya bisa absen 1 kali per hari yang sama
+    const alreadyToday = records.find(
+      r => String(r.workshop_id) === String(data.workshop_id) &&
+           String(r.identitas || '').trim().toUpperCase() === String(data.identitas || '').trim().toUpperCase() &&
+           r.timestamp && r.timestamp.startsWith(todayDateStr)
+    );
+    if (alreadyToday) {
+      const err = new Error(`NIM ${data.identitas} sudah tercatat presensi pada hari ini (${todayDateStr}) untuk sesi praktikum ini.`);
+      err.code = 'ALREADY_ATTENDED_TODAY';
+      err.record = alreadyToday;
+      throw err;
+    }
+  } else {
+    // Untuk workshop sekali jalan: 1 NIM hanya bisa absen 1 kali untuk seluruh sesi
+    const alreadyRecord = records.find(
+      r => String(r.workshop_id) === String(data.workshop_id) &&
+           String(r.identitas || '').trim().toUpperCase() === String(data.identitas || '').trim().toUpperCase()
+    );
+    if (alreadyRecord) {
+      const err = new Error(`NIM ${data.identitas} sudah tercatat presensi pada kegiatan ini dengan nomor referensi ${alreadyRecord.cert_number}.`);
+      err.code = 'ALREADY_ATTENDED';
+      err.record = alreadyRecord;
+      throw err;
+    }
+  }
+
+  const hasCert = workshop ? (workshop.has_certificate !== false) : true;
+  const certNum = hasCert
+    ? `CERT/MPI/${now.getFullYear()}/${String(records.length + 1).padStart(4, "0")}`
+    : `PRES-MPI/${now.getFullYear()}/${String(records.length + 1).padStart(4, "0")}`;
+
   const newRecord = {
     workshop_id: data.workshop_id,
-    workshop_title: workshop?.title || "Workshop Lab Microleading",
-    workshop_date: workshop?.date || new Date().toISOString().split("T")[0],
-    speaker: workshop?.speaker || "Pemateri Lab Microleading",
-    cert_bg: workshop?.cert_bg || certSettings?.template_bg || "/img/cert-template.jpg",
-    cert_layout: workshop?.cert_layout ? {
+    workshop_title: workshop?.title || "Kegiatan Lab Microleading",
+    workshop_date: isRecurring ? todayDateStr : (workshop?.date || todayDateStr),
+    schedule_pattern: isRecurring ? (workshop?.date || "Jadwal Rutin Berkala") : null,
+    schedule_type: workshop?.schedule_type || 'single',
+    speaker: workshop?.speaker || "Instruktur / Panitia Lab",
+    has_certificate: hasCert,
+    cert_bg: hasCert ? (workshop?.cert_bg || certSettings?.template_bg || "/img/cert-template.jpg") : null,
+    cert_layout: hasCert ? (workshop?.cert_layout ? {
       orientation: 'landscape',
       ...workshop.cert_layout,
     } : {
@@ -501,9 +872,9 @@ export async function submitAttendance(data) {
       fontWeight: certSettings.fontWeight,
       underline: certSettings.underline,
       orientation: certSettings.orientation || 'landscape',
-    },
-    drive_url: workshop?.drive_folder_url || certSettings?.drive_folder_url || null,
-    drive_webhook_url: workshop?.drive_webhook_url || certSettings?.drive_webhook_url || null,
+    }) : null,
+    drive_url: hasCert ? (workshop?.drive_folder_url || certSettings?.drive_folder_url || null) : null,
+    drive_webhook_url: hasCert ? (workshop?.drive_webhook_url || certSettings?.drive_webhook_url || null) : null,
     nama: data.nama,
     identitas: data.identitas,
     instansi: data.instansi,

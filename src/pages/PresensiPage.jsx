@@ -6,7 +6,9 @@ import {
   Award, Search, Calendar, Clock, MapPin, User, Send, ExternalLink,
   CheckCircle, CheckCircle2, Loader2, UploadCloud, FileText, Image as ImageIcon,
   File, X, AlertCircle, Sparkles, Building, Mail, Phone, Hash, Check, Zap, Download,
-  Eye, Printer, Copy, KeyRound, Lock, Unlock, EyeOff
+  Eye, Printer, Copy, KeyRound, Lock, Unlock, EyeOff,
+  CalendarDays, CalendarClock, Repeat, Timer, Radio, Flame, Ticket, Medal, ShieldAlert,
+  BadgeCheck, ShieldOff, ShieldCheck, ClipboardCheck, Hourglass
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { jsPDF } from 'jspdf';
@@ -64,20 +66,72 @@ function WorkshopCard({ workshop, onSelect }) {
 
       <div className="relative z-10">
         <div className="flex items-center justify-between gap-2 mb-3.5 flex-wrap">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-100/80 text-purple-900 text-[11px] font-bold border border-purple-200">
-            <Calendar size={11} className="text-purple-700" />
-            Kegiatan Lab Microleading
-          </span>
-          <div className="flex items-center gap-1.5">
-            {attendanceStatus.allowed ? (
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-600 text-white shadow-xs">
-                <span className="w-1.5 h-1.5 rounded-full bg-white mr-1.5 animate-pulse" />
-                Presensi Aktif
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-purple-100/90 text-purple-900 text-[10px] font-bold border border-purple-200 shadow-2xs">
+              <Calendar size={11} className="text-purple-700" />
+              Kegiatan Lab
+            </span>
+
+            {/* Model Jadwal Badge */}
+            {workshop.schedule_type === 'recurring' ? (
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200/90 shadow-2xs">
+                <Repeat size={11} className="text-indigo-600" />
+                Rutin Berkala
               </span>
             ) : (
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200 shadow-xs">
-                <Lock size={9} />
-                Presensi Terkunci
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200 shadow-2xs">
+                <CalendarDays size={11} className="text-slate-600" />
+                Tanggal Pasti
+              </span>
+            )}
+
+            {/* Sertifikasi Badge */}
+            {workshop.has_certificate !== false ? (
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-900 border border-amber-200 shadow-2xs">
+                <Medal size={11} className="text-amber-600" />
+                Bersertifikat
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-900 border border-blue-200 shadow-2xs">
+                <ClipboardCheck size={11} className="text-blue-600" />
+                Presensi Lab
+              </span>
+            )}
+
+            {/* Pendaftaran Badge */}
+            {workshop.require_registration !== false ? (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-200 shadow-2xs">
+                <Ticket size={11} className="text-purple-600" />
+                Wajib Daftar
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-50 text-teal-800 border border-teal-200 shadow-2xs">
+                <BadgeCheck size={11} className="text-teal-600" />
+                Bebas Absen
+              </span>
+            )}
+          </div>
+
+          {/* Status Presensi Header Pill */}
+          <div className="flex items-center gap-1.5">
+            {attendanceStatus.allowed ? (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-extrabold bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-sm shadow-emerald-600/30 ring-2 ring-emerald-400/20">
+                {attendanceStatus.code === 'OPEN_LIVE' ? (
+                  <>
+                    <Radio size={11} className="animate-pulse" />
+                    LIVE Buka Manual
+                  </>
+                ) : (
+                  <>
+                    <Timer size={11} className="animate-pulse" />
+                    Presensi Aktif (Sesuai Jam)
+                  </>
+                )}
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-900 border border-amber-300 shadow-2xs">
+                <Lock size={10} className="text-amber-700" />
+                {attendanceStatus.statusBadge}
               </span>
             )}
           </div>
@@ -97,7 +151,7 @@ function WorkshopCard({ workshop, onSelect }) {
             <span className="truncate"><strong>Narasumber:</strong> {workshop.speaker}</span>
           </div>
           <div className="flex items-center gap-2">
-            <Clock size={13} className="text-purple-600 shrink-0" />
+            <CalendarClock size={13} className="text-purple-600 shrink-0" />
             <span><strong>Waktu:</strong> {workshop.date} ({workshop.time})</span>
           </div>
           <div className="flex items-center gap-2">
@@ -112,24 +166,37 @@ function WorkshopCard({ workshop, onSelect }) {
           onClick={() => { playClick(); onSelect(workshop); }}
           className="btn-shimmer relative z-10 w-full py-3 rounded-2xl font-bold text-xs text-white bg-gradient-to-r from-purple-600 via-violet-600 to-indigo-600 shadow-md shadow-purple-600/25 hover:shadow-lg hover:shadow-purple-600/40 hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2 cursor-pointer"
         >
-          <Award size={13} />
+          {attendanceStatus.code === 'OPEN_LIVE' ? <Radio size={13} className="animate-pulse" /> : <Timer size={13} />}
           <span>Pilih & Isi Presensi Ini</span>
         </button>
       ) : isOpen ? (
         <div className="space-y-1.5 relative z-10">
-          <div className="w-full py-2.5 px-3 rounded-xl font-bold text-[11px] text-amber-800 bg-amber-50 border border-amber-200 flex items-center justify-center gap-1.5 text-center">
-            <Lock size={12} className="text-amber-600 shrink-0" />
-            <span>Presensi Baru Dibuka pada Hari-H</span>
+          <div className="w-full py-2.5 px-3 rounded-xl font-bold text-[11px] text-amber-900 bg-amber-50/90 border border-amber-200 flex items-center justify-center gap-1.5 text-center shadow-2xs">
+            {attendanceStatus.code === 'DAY_LOCKED' ? (
+              <CalendarClock size={13} className="text-amber-700 shrink-0" />
+            ) : attendanceStatus.code === 'TIME_LOCKED_EARLY' ? (
+              <Hourglass size={13} className="text-amber-700 shrink-0" />
+            ) : (
+              <Lock size={13} className="text-amber-700 shrink-0" />
+            )}
+            <span>{attendanceStatus.statusBadge}</span>
           </div>
-          <a
-            href={`/pendaftaran?workshop=${workshop.id}`}
-            className="w-full py-2 px-3 rounded-xl font-bold text-xs text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 flex items-center justify-center gap-1.5 transition-colors no-underline"
-          >
-            Daftar / Ambil E-Ticket Sesi Ini &rarr;
-          </a>
+          <p className="text-[10px] text-slate-500 text-center leading-relaxed px-1">
+            {attendanceStatus.reason}
+          </p>
+          {workshop.require_registration !== false && (
+            <a
+              href={`/pendaftaran?workshop=${workshop.id}`}
+              className="w-full py-2 px-3 rounded-xl font-bold text-xs text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 flex items-center justify-center gap-1.5 transition-colors no-underline shadow-2xs"
+            >
+              <Ticket size={12} />
+              <span>Daftar / Ambil E-Ticket Sesi Ini &rarr;</span>
+            </a>
+          )}
         </div>
       ) : (
         <div className="relative z-10 w-full py-3 rounded-2xl font-bold text-xs text-slate-500 bg-slate-100 border border-slate-200 flex items-center justify-center gap-2">
+          <Lock size={12} />
           <span>Kegiatan Selesai / Ditutup</span>
         </div>
       )}
@@ -339,14 +406,16 @@ function ThankYouModal({ record, onClose, onGoToCek, onDownload }) {
           </div>
 
           <div>
-            <span className="inline-block px-3.5 py-1 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-extrabold uppercase tracking-wider mb-2 border border-emerald-200">
-              Presensi Resmi Terverifikasi
+            <span className={`inline-block px-3.5 py-1 rounded-full text-[11px] font-extrabold uppercase tracking-wider mb-2 border ${record.has_certificate !== false ? 'bg-emerald-100 text-emerald-800 border-emerald-200' : 'bg-blue-100 text-blue-800 border-blue-200'}`}>
+              {record.has_certificate !== false ? 'Presensi Resmi Terverifikasi' : 'Presensi Rutin Terverifikasi'}
             </span>
             <h3 className="font-display font-extrabold text-slate-900 text-2xl sm:text-3xl leading-tight">
-              Terima Kasih Telah Mengikuti!
+              {record.has_certificate !== false ? 'Terima Kasih Telah Mengikuti!' : 'Presensi Berhasil Dicatat!'}
             </h3>
             <p className="text-xs sm:text-sm text-slate-600 max-w-sm mx-auto mt-1.5 leading-relaxed">
-              Kehadiran dan berkas bukti absensi Anda telah berhasil dicatat dalam basis data resmi Laboratorium MPI FTK UIN Alauddin Makassar.
+              {record.has_certificate !== false
+                ? 'Kehadiran dan berkas bukti absensi Anda telah berhasil dicatat dalam basis data resmi Laboratorium MPI FTK UIN Alauddin Makassar.'
+                : 'Data kehadiran Anda telah resmi tersimpan dalam arsip rekapitulasi presensi Laboratorium MPI FTK UIN Alauddin Makassar.'}
             </p>
           </div>
 
@@ -376,7 +445,10 @@ function ThankYouModal({ record, onClose, onGoToCek, onDownload }) {
             </div>
 
             <div className="p-2.5 rounded-xl bg-white border border-purple-100 flex items-center justify-between gap-2 text-xs font-mono">
-              <span className="text-slate-500 min-w-0 truncate text-[11px] sm:text-xs">No. Reg: <strong className="text-purple-950 break-all">{record.cert_number}</strong></span>
+              <span className="text-slate-500 min-w-0 truncate text-[11px] sm:text-xs">
+                {record.has_certificate !== false ? 'No. Reg: ' : 'No. Presensi: '}
+                <strong className="text-purple-950 break-all">{record.cert_number}</strong>
+              </span>
               <button
                 type="button"
                 onClick={handleCopy}
@@ -389,45 +461,67 @@ function ThankYouModal({ record, onClose, onGoToCek, onDownload }) {
           </div>
 
           {/* Privacy & Dedicated Menu Note */}
-          <div className="rounded-2xl p-3.5 bg-amber-50/90 border border-amber-200 text-amber-950 text-xs text-left flex items-start gap-2.5">
-            <Sparkles size={16} className="text-amber-600 shrink-0 mt-0.5" />
-            <div className="leading-relaxed">
-              <strong>Privasi Sertifikat Terjamin:</strong> Sertifikat Anda disiapkan khusus atas nama Anda sendiri. Untuk melihat, mengambil, atau mencetak sertifikat resmi, silakan gunakan tab menu <strong>Cek Sertifikat</strong> kapan saja tanpa membuka akses berkas peserta lain.
+          {record.has_certificate !== false ? (
+            <div className="rounded-2xl p-3.5 bg-amber-50/90 border border-amber-200 text-amber-950 text-xs text-left flex items-start gap-2.5">
+              <Sparkles size={16} className="text-amber-600 shrink-0 mt-0.5" />
+              <div className="leading-relaxed">
+                <strong>Privasi Sertifikat Terjamin:</strong> Sertifikat Anda disiapkan khusus atas nama Anda sendiri. Untuk melihat, mengambil, atau mencetak sertifikat resmi, silakan gunakan tab menu <strong>Cek Sertifikat</strong> kapan saja tanpa membuka akses berkas peserta lain.
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="rounded-2xl p-3.5 bg-blue-50/90 border border-blue-200 text-blue-950 text-xs text-left flex items-start gap-2.5">
+              <CheckCircle2 size={16} className="text-blue-600 shrink-0 mt-0.5" />
+              <div className="leading-relaxed">
+                <strong>Presensi Kegiatan Rutin Lab:</strong> Kegiatan ini merupakan kegiatan reguler praktikum/rutin laboratorium yang berfokus pada rekapitulasi kehadiran resmi tanpa penerbitan sertifikat. Data Anda aman tercatat di sistem lab.
+              </div>
+            </div>
+          )}
 
           {/* Action Buttons */}
-          <div className="space-y-2 pt-1">
-            <button
-              type="button"
-              onClick={() => {
-                playClick();
-                onGoToCek(record.nama);
-              }}
-              className="btn-shimmer w-full py-3.5 rounded-2xl text-xs sm:text-sm font-extrabold text-white bg-gradient-to-r from-purple-600 via-violet-600 to-indigo-600 shadow-lg shadow-purple-600/30 flex items-center justify-center gap-2 hover:scale-[1.01] active:scale-[0.99] transition-all cursor-pointer"
-            >
-              <Search size={16} />
-              <span>Lihat di Menu Cek Sertifikat</span>
-            </button>
+          {record.has_certificate !== false ? (
+            <div className="space-y-2 pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  playClick();
+                  onGoToCek(record.nama);
+                }}
+                className="btn-shimmer w-full py-3.5 rounded-2xl text-xs sm:text-sm font-extrabold text-white bg-gradient-to-r from-purple-600 via-violet-600 to-indigo-600 shadow-lg shadow-purple-600/30 flex items-center justify-center gap-2 hover:scale-[1.01] active:scale-[0.99] transition-all cursor-pointer"
+              >
+                <Search size={16} />
+                <span>Lihat di Menu Cek Sertifikat</span>
+              </button>
 
-            <button
-              type="button"
-              onClick={handleDownloadClick}
-              disabled={downloading}
-              className="w-full py-3 rounded-2xl text-xs sm:text-sm font-bold text-purple-900 bg-white hover:bg-purple-50 border-2 border-purple-200 flex items-center justify-center gap-2 transition-all cursor-pointer hover:scale-[1.01] active:scale-[0.99]"
-            >
-              <FileText size={16} className={downloading ? 'animate-bounce text-purple-600' : 'text-purple-600'} />
-              <span>{downloading ? 'Menyiapkan Dokumen PDF...' : 'Unduh Langsung Sertifikat (.PDF)'}</span>
-            </button>
+              <button
+                type="button"
+                onClick={handleDownloadClick}
+                disabled={downloading}
+                className="w-full py-3 rounded-2xl text-xs sm:text-sm font-bold text-purple-900 bg-white hover:bg-purple-50 border-2 border-purple-200 flex items-center justify-center gap-2 transition-all cursor-pointer hover:scale-[1.01] active:scale-[0.99]"
+              >
+                <FileText size={16} className={downloading ? 'animate-bounce text-purple-600' : 'text-purple-600'} />
+                <span>{downloading ? 'Menyiapkan Dokumen PDF...' : 'Unduh Langsung Sertifikat (.PDF)'}</span>
+              </button>
 
-            <button
-              type="button"
-              onClick={onClose}
-              className="text-xs font-bold text-slate-400 hover:text-slate-700 py-1 transition-colors cursor-pointer block mx-auto"
-            >
-              Tutup & Selesai
-            </button>
-          </div>
+              <button
+                type="button"
+                onClick={onClose}
+                className="text-xs font-bold text-slate-400 hover:text-slate-700 py-1 transition-colors cursor-pointer block mx-auto"
+              >
+                Tutup & Selesai
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-2 pt-1">
+              <button
+                type="button"
+                onClick={onClose}
+                className="btn-shimmer w-full py-3.5 rounded-2xl text-xs sm:text-sm font-extrabold text-white bg-gradient-to-r from-emerald-600 to-teal-600 shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2 hover:scale-[1.01] active:scale-[0.99] transition-all cursor-pointer"
+              >
+                <CheckCircle2 size={16} />
+                <span>Presensi Selesai & Tutup</span>
+              </button>
+            </div>
+          )}
         </motion.div>
       </div>
     </AnimatePresence>
@@ -853,23 +947,69 @@ function AttendanceForm({ workshops, selectedWorkshop, onGoToCek }) {
 
     setLoading(true);
     try {
-      // 1. Cek duplikasi presensi (NIM sama pada workshop yang sama)
-      const existingAttendance = await getAttendance();
-      const duplicateRecord = existingAttendance.find(
-        (r) =>
-          String(r.workshop_id) === String(form.workshop_id) &&
-          String(r.identitas).trim().toUpperCase() === String(form.identitas).trim().toUpperCase()
-      );
+      // 1. Cek kebijakan pendaftaran sebelum presensi
+      if (currentSelectedWs && currentSelectedWs.require_registration !== false) {
+        const matchReg = await findRegistrationByNimOrCode(form.identitas, form.workshop_id);
+        if (!matchReg) {
+          setLoading(false);
+          playError();
+          const goToRegister = await showConfirm({
+            title: 'NIM Belum Terdaftar!',
+            message: `Kegiatan "${currentSelectedWs.title}" mewajibkan pendaftaran sebelum pengisian presensi.\n\nNIM / Identitas Anda (${form.identitas}) belum ditemukan dalam daftar peserta. Apakah Anda ingin membuka formulir pendaftaran sekarang?`,
+            type: 'warning',
+            confirmText: 'Daftar Sekarang (Hanya 30 Detik) →',
+            cancelText: 'Periksa Kembali NIM',
+          });
+          if (goToRegister) {
+            window.location.href = `/pendaftaran?workshop=${currentSelectedWs.id}`;
+          }
+          return;
+        }
+      }
 
-      if (duplicateRecord) {
-        setLoading(false);
-        showAlert({
-          title: 'Presensi Sudah Pernah Diisi',
-          message: `NIM ${form.identitas} sudah tercatat presensi pada workshop ini dengan nomor sertifikat ${duplicateRecord.cert_number}.`,
-          type: 'info',
-        });
-        setSuccessRecord(duplicateRecord);
-        return;
+      // 2. Cek duplikasi presensi (Rutin: per hari yang sama | Single: sekali acara)
+      const existingAttendance = await getAttendance();
+      const isRecurring = currentSelectedWs?.schedule_type === 'recurring';
+      const now = new Date();
+      const todayDateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+      if (isRecurring) {
+        // Untuk kegiatan rutin berkala, cegah presensi ganda pada tanggal HARI INI
+        const duplicateToday = existingAttendance.find(
+          (r) =>
+            String(r.workshop_id) === String(form.workshop_id) &&
+            String(r.identitas).trim().toUpperCase() === String(form.identitas).trim().toUpperCase() &&
+            r.timestamp && r.timestamp.startsWith(todayDateStr)
+        );
+
+        if (duplicateToday) {
+          setLoading(false);
+          showAlert({
+            title: 'Presensi Hari Ini Sudah Diisi',
+            message: `NIM ${form.identitas} sudah tercatat presensi pada hari ini (${todayDateStr}) untuk sesi praktikum ini.`,
+            type: 'info',
+          });
+          setSuccessRecord(duplicateToday);
+          return;
+        }
+      } else {
+        // Untuk workshop sekali jalan: 1 NIM hanya 1 kali
+        const duplicateRecord = existingAttendance.find(
+          (r) =>
+            String(r.workshop_id) === String(form.workshop_id) &&
+            String(r.identitas).trim().toUpperCase() === String(form.identitas).trim().toUpperCase()
+        );
+
+        if (duplicateRecord) {
+          setLoading(false);
+          showAlert({
+            title: 'Presensi Sudah Pernah Diisi',
+            message: `NIM ${form.identitas} sudah tercatat presensi pada kegiatan ini dengan nomor referensi ${duplicateRecord.cert_number}.`,
+            type: 'info',
+          });
+          setSuccessRecord(duplicateRecord);
+          return;
+        }
       }
 
       const payload = {
@@ -907,6 +1047,28 @@ function AttendanceForm({ workshops, selectedWorkshop, onGoToCek }) {
       setBanner(null);
     } catch (err) {
       playError();
+      if (err?.code === 'ALREADY_ATTENDED_TODAY' || err?.code === 'ALREADY_ATTENDED') {
+        showAlert({
+          title: 'Presensi Sudah Tercatat',
+          message: err.message,
+          type: 'info',
+        });
+        if (err.record) setSuccessRecord(err.record);
+        return;
+      }
+      if (err?.code === 'NOT_REGISTERED') {
+        const goToRegister = await showConfirm({
+          title: 'NIM Belum Terdaftar!',
+          message: `${err.message}\n\nIngin membuka formulir pendaftaran sekarang?`,
+          type: 'warning',
+          confirmText: 'Daftar Sekarang (Hanya 30 Detik) →',
+          cancelText: 'Periksa Kembali NIM',
+        });
+        if (goToRegister) {
+          window.location.href = `/pendaftaran?workshop=${currentSelectedWs?.id || form.workshop_id}`;
+        }
+        return;
+      }
       showAlert({
         title: 'Gagal Mengirim Presensi',
         message: err?.message || 'Terjadi kendala saat menyimpan data presensi Anda. Silakan periksa koneksi internet dan coba lagi.',
@@ -1014,11 +1176,14 @@ function AttendanceForm({ workshops, selectedWorkshop, onGoToCek }) {
               required
             >
               <option value="">-- Pilih Kegiatan yang Diikuti --</option>
-              {workshops.filter(w => w.status === 'open' || w.is_attendance_open === true).map(w => {
+              {workshops.filter(w => w.status === 'open' || w.is_attendance_open === true || w.attendance_mode === 'open').map(w => {
                 const st = getWorkshopAttendanceStatus(w);
+                const statusTag = st.allowed
+                  ? (st.code === 'OPEN_LIVE' ? '⚡ [Buka Manual]' : '⏰ [Presensi Aktif]')
+                  : `🔒 [${st.statusBadge}]`;
                 return (
                   <option key={w.id} value={w.id}>
-                    {w.title} ({w.date}) {st.allowed ? '✓ [Presensi Aktif]' : '🔒 [Terkunci / Hari-H]'}
+                    {w.title} ({w.date}) {statusTag}
                   </option>
                 );
               })}
@@ -1068,28 +1233,43 @@ function AttendanceForm({ workshops, selectedWorkshop, onGoToCek }) {
                   initial={{ opacity: 0, y: -4 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -4 }}
-                  className="p-4 rounded-2xl bg-amber-50/95 border-2 border-amber-300 text-amber-950 text-xs space-y-2 shadow-xs"
+                  className="p-4 sm:p-5 rounded-2xl bg-amber-50/95 border-2 border-amber-300 text-amber-950 text-xs space-y-2.5 shadow-sm"
                 >
-                  <div className="flex items-start gap-2.5">
-                    <div className="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-xs">
-                      <Lock size={16} />
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-md shadow-amber-500/25">
+                      {attendanceAccess.code === 'DAY_LOCKED' ? (
+                        <CalendarClock size={20} />
+                      ) : attendanceAccess.code === 'TIME_LOCKED_EARLY' ? (
+                        <Hourglass size={20} />
+                      ) : (
+                        <Lock size={20} />
+                      )}
                     </div>
-                    <div className="flex-1">
-                      <h4 className="font-extrabold text-amber-950 text-sm">
-                        Sesi Presensi Belum Dibuka
-                      </h4>
-                      <p className="text-amber-800 text-xs mt-0.5 leading-relaxed">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                        <h4 className="font-extrabold text-amber-950 text-sm">
+                          Sesi Presensi Belum Dibuka
+                        </h4>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-200/80 text-amber-900 border border-amber-300">
+                          {attendanceAccess.statusBadge}
+                        </span>
+                      </div>
+                      <p className="text-amber-800 text-xs leading-relaxed">
                         {attendanceAccess.reason}
                       </p>
                     </div>
                   </div>
                   <div className="pt-2 border-t border-amber-200/80 flex items-center justify-between flex-wrap gap-2 text-[11px] font-semibold text-amber-900">
-                    <span>💡 Simpan nomor tiket registrasi Anda untuk verifikasi pada Hari-H.</span>
+                    <span className="flex items-center gap-1.5">
+                      <Ticket size={12} className="text-amber-700" />
+                      Simpan nomor tiket registrasi Anda untuk verifikasi pada Hari-H.
+                    </span>
                     <a
                       href={`/pendaftaran?tab=cek`}
-                      className="underline hover:text-amber-950 font-bold"
+                      className="inline-flex items-center gap-1 underline hover:text-amber-950 font-bold"
                     >
-                      Cek Tiket Pendaftaran &rarr;
+                      <span>Cek Tiket Pendaftaran</span>
+                      <span>&rarr;</span>
                     </a>
                   </div>
                 </motion.div>
@@ -1099,16 +1279,57 @@ function AttendanceForm({ workshops, selectedWorkshop, onGoToCek }) {
                   initial={{ opacity: 0, y: -4 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -4 }}
-                  className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-950 text-xs flex items-center justify-between gap-2 shadow-xs"
+                  className={`p-3.5 rounded-2xl border text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs ${
+                    attendanceAccess.code === 'OPEN_LIVE'
+                      ? 'bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 border-emerald-300 text-emerald-950'
+                      : (currentSelectedWs.has_certificate !== false
+                        ? 'bg-gradient-to-r from-purple-50 via-indigo-50/40 to-purple-50 border-purple-300 text-purple-950'
+                        : 'bg-gradient-to-r from-blue-50 via-indigo-50/40 to-blue-50 border-blue-300 text-blue-950')
+                  }`}
                 >
-                  <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-                    <span className="font-bold text-emerald-900">
-                      Sesi Presensi Hari-H Aktif — Formulir Terbuka
-                    </span>
+                  <div className="flex items-center gap-2.5">
+                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 shadow-2xs ${
+                      attendanceAccess.code === 'OPEN_LIVE'
+                        ? 'bg-emerald-600 text-white'
+                        : (currentSelectedWs.has_certificate !== false ? 'bg-purple-600 text-white' : 'bg-blue-600 text-white')
+                    }`}>
+                      {attendanceAccess.code === 'OPEN_LIVE' ? (
+                        <Radio size={16} className="animate-pulse" />
+                      ) : (
+                        <Timer size={16} />
+                      )}
+                    </div>
+                    <div>
+                      <p className="font-extrabold text-sm leading-tight">
+                        {attendanceAccess.code === 'OPEN_LIVE'
+                          ? 'Presensi DIBUKA MANUAL oleh Panitia di Ruangan'
+                          : (currentSelectedWs.has_certificate !== false
+                            ? 'Presensi Hari-H Aktif Otomatis — Sesuai Jam Pelaksanaan'
+                            : 'Presensi Praktikum Aktif Otomatis — Sesuai Jam Praktikum Lab')}
+                      </p>
+                      <p className="text-[11px] text-slate-500 mt-0.5">
+                        {attendanceAccess.reason}
+                      </p>
+                    </div>
                   </div>
-                  <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-[10px] font-extrabold">
-                    SIAP ABSEN
+                  <span className={`px-3 py-1 rounded-full text-[10px] font-extrabold shrink-0 self-start sm:self-center shadow-2xs flex items-center gap-1.5 ${
+                    attendanceAccess.code === 'OPEN_LIVE'
+                      ? 'bg-emerald-100 text-emerald-900 border border-emerald-300'
+                      : (currentSelectedWs.has_certificate !== false
+                        ? 'bg-purple-100 text-purple-900 border border-purple-300'
+                        : 'bg-blue-100 text-blue-900 border border-blue-300')
+                  }`}>
+                    {attendanceAccess.code === 'OPEN_LIVE' ? (
+                      <>
+                        <Zap size={11} className="text-emerald-700" />
+                        BUKA MANUAL
+                      </>
+                    ) : (
+                      <>
+                        <Timer size={11} className="text-purple-700" />
+                        {currentSelectedWs.has_certificate !== false ? 'SIAP ABSEN' : 'PRESENSI RUTIN'}
+                      </>
+                    )}
                   </span>
                 </motion.div>
               )}
@@ -1137,8 +1358,8 @@ function AttendanceForm({ workshops, selectedWorkshop, onGoToCek }) {
                   <p className="text-[11px] text-slate-500">Masukkan kode verifikasi yang dibagikan narasumber di ruangan</p>
                 </div>
               </div>
-              <span className="px-2.5 py-1 rounded-full bg-indigo-100 text-indigo-800 text-[10px] font-extrabold uppercase tracking-wider border border-indigo-200 flex items-center gap-1">
-                <Lock size={10} /> Verifikasi Ruangan
+              <span className="px-2.5 py-1 rounded-full bg-indigo-100 text-indigo-900 text-[10px] font-extrabold uppercase tracking-wider border border-indigo-300 flex items-center gap-1.5 shadow-2xs">
+                <ShieldCheck size={12} className="text-indigo-700" /> Verifikasi Ruangan Fisik
               </span>
             </div>
 
@@ -1162,7 +1383,7 @@ function AttendanceForm({ workshops, selectedWorkshop, onGoToCek }) {
                 {showPin ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
             </div>
-            <p className="text-[11px] text-indigo-700 font-medium flex items-center gap-1.5">
+            <p className="text-[11px] text-indigo-800 font-medium flex items-center gap-1.5">
               <Sparkles size={12} className="text-indigo-600 shrink-0" />
               PIN rahasia ini ditampilkan di slide proyektor ruangan untuk memastikan kehadiran fisik peserta.
             </p>
@@ -1526,9 +1747,15 @@ function CertSearch({ initialQuery = '' }) {
           >
             <div className="w-full min-w-0 flex-1 overflow-hidden">
               <div className="flex items-center gap-1.5 sm:gap-2 mb-2 flex-wrap">
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] sm:text-[11px] font-bold border border-emerald-200 shrink-0">
-                  <Check size={11} /> Sertifikat Terverifikasi
-                </span>
+                {rec.has_certificate !== false ? (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] sm:text-[11px] font-bold border border-emerald-200 shrink-0">
+                    <Check size={11} /> Sertifikat Terverifikasi
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 text-[10px] sm:text-[11px] font-bold border border-blue-200 shrink-0">
+                    <Check size={11} /> Presensi Rutin Terdata
+                  </span>
+                )}
                 <span className="font-mono text-[11px] sm:text-xs px-2.5 py-0.5 rounded-lg bg-slate-100 text-slate-600 font-semibold border border-slate-200 break-all">
                   {rec.cert_number}
                 </span>
@@ -1551,27 +1778,36 @@ function CertSearch({ initialQuery = '' }) {
 
             {/* Action Buttons: Ambil Sertifikat (Membuka Lightbox) & Unduh Langsung */}
             <div className="flex items-center gap-2 w-full lg:w-auto justify-end sm:justify-start shrink-0 pt-3 lg:pt-0 border-t lg:border-t-0 border-purple-100/80">
-              {/* Button 1: Ambil Sertifikat (Membuka Lightbox View) */}
-              <button
-                type="button"
-                onClick={() => { playClick(); setPreviewRecord(rec); }}
-                className="btn-shimmer flex-1 sm:flex-initial px-4 sm:px-5 py-2.5 rounded-2xl text-xs font-bold text-white bg-gradient-to-r from-purple-600 via-violet-600 to-indigo-600 shadow-md shadow-purple-600/25 hover:shadow-lg hover:shadow-purple-600/40 flex items-center justify-center gap-2 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
-                title="Buka dan ambil e-sertifikat resmi Anda"
-              >
-                <Award size={15} className="text-amber-300 shrink-0" />
-                <span className="truncate">Ambil Sertifikat</span>
-              </button>
+              {rec.has_certificate !== false ? (
+                <>
+                  {/* Button 1: Ambil Sertifikat (Membuka Lightbox View) */}
+                  <button
+                    type="button"
+                    onClick={() => { playClick(); setPreviewRecord(rec); }}
+                    className="btn-shimmer flex-1 sm:flex-initial px-4 sm:px-5 py-2.5 rounded-2xl text-xs font-bold text-white bg-gradient-to-r from-purple-600 via-violet-600 to-indigo-600 shadow-md shadow-purple-600/25 hover:shadow-lg hover:shadow-purple-600/40 flex items-center justify-center gap-2 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+                    title="Buka dan ambil e-sertifikat resmi Anda"
+                  >
+                    <Award size={15} className="text-amber-300 shrink-0" />
+                    <span className="truncate">Ambil Sertifikat</span>
+                  </button>
 
-              {/* Button 2: Unduh Langsung .PDF */}
-              <button
-                type="button"
-                onClick={() => handleDownload(rec)}
-                disabled={downloadingId === rec.id}
-                className="p-2.5 rounded-2xl bg-white hover:bg-purple-50 border border-purple-200 text-purple-700 transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98] shrink-0"
-                title="Unduh Langsung Sertifikat Resmi (.PDF)"
-              >
-                <Download size={15} className={downloadingId === rec.id ? 'animate-bounce text-purple-600' : ''} />
-              </button>
+                  {/* Button 2: Unduh Langsung .PDF */}
+                  <button
+                    type="button"
+                    onClick={() => handleDownload(rec)}
+                    disabled={downloadingId === rec.id}
+                    className="p-2.5 rounded-2xl bg-white hover:bg-purple-50 border border-purple-200 text-purple-700 transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98] shrink-0"
+                    title="Unduh Langsung Sertifikat Resmi (.PDF)"
+                  >
+                    <Download size={15} className={downloadingId === rec.id ? 'animate-bounce text-purple-600' : ''} />
+                  </button>
+                </>
+              ) : (
+                <div className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-100 text-slate-600 text-xs font-bold border border-slate-200">
+                  <CheckCircle2 size={14} className="text-blue-600 shrink-0" />
+                  <span>Presensi Rutin (Non-Sertifikat)</span>
+                </div>
+              )}
             </div>
           </div>
         ))}

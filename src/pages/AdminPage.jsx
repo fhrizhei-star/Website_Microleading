@@ -10,7 +10,8 @@ import {
   UserPlus, GraduationCap, TrendingUp, Activity, Star,
   Bell, BarChart2, PieChart, ChevronLeft, ChevronRight,
   BookOpen, Shield, Layers, Target, Cpu, Globe, KeyRound, Lock,
-  ClipboardCheck, Unlock, Key, Dices, ShieldCheck
+  ClipboardCheck, Unlock, Key, Dices, ShieldCheck,
+  CalendarDays, CalendarClock, Repeat, Timer, Radio, Flame, Ticket, Medal, ShieldAlert, BadgeCheck, ShieldOff
 } from 'lucide-react';
 import {
   getAllWorkshops, getAttendance, getNews, getGallery, getMembers,
@@ -20,7 +21,7 @@ import {
   deleteAttendance, updateAttendanceDriveUrl, getCertSettings, updateCertSettings,
   getCurrentUser, clearCurrentUser, getFirebaseStatus, changeAdminPassword,
   getRegistrations, deleteRegistration, updateRegistrationStatus,
-  getWorkshopAttendanceStatus
+  getWorkshopAttendanceStatus, setWorkshopAttendanceMode
 } from '../store/dataStore';
 import { exportStyledExcel, exportSingleRegistrationExcel } from '../utils/excelExport';
 import { useNavigate } from 'react-router-dom';
@@ -587,11 +588,10 @@ function doGet(e) {
                 <Upload size={15} className="text-purple-600" />
                 1. Template Desain Sertifikat (Gambar)
               </h3>
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${
-                settings.orientation === 'portrait'
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${settings.orientation === 'portrait'
                   ? 'bg-amber-50 text-amber-800 border-amber-200'
                   : 'bg-purple-50 text-purple-700 border border-purple-200'
-              }`}>
+                }`}>
                 {settings.orientation === 'portrait' ? '📄 Portrait (Tegak)' : '📜 Landscape (Mendatar)'}
               </span>
             </div>
@@ -628,22 +628,20 @@ function doGet(e) {
                 <button
                   type="button"
                   onClick={() => setSettings((s) => ({ ...s, orientation: 'landscape' }))}
-                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
-                    settings.orientation !== 'portrait'
+                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${settings.orientation !== 'portrait'
                       ? 'bg-white text-purple-700 shadow-xs'
                       : 'text-slate-600 hover:text-slate-900'
-                  }`}
+                    }`}
                 >
                   📜 Landscape (Mendatar)
                 </button>
                 <button
                   type="button"
                   onClick={() => setSettings((s) => ({ ...s, orientation: 'portrait' }))}
-                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
-                    settings.orientation === 'portrait'
+                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${settings.orientation === 'portrait'
                       ? 'bg-white text-purple-700 shadow-xs'
                       : 'text-slate-600 hover:text-slate-900'
-                  }`}
+                    }`}
                 >
                   📄 Portrait (Tegak)
                 </button>
@@ -876,8 +874,8 @@ function doGet(e) {
 
                   {testWebhookNotice && (
                     <div className={`p-3 rounded-xl text-xs font-semibold leading-relaxed ${testWebhookNotice.type === 'success'
-                        ? 'bg-emerald-50 text-emerald-900 border border-emerald-200'
-                        : 'bg-rose-50 text-rose-900 border border-rose-200'
+                      ? 'bg-emerald-50 text-emerald-900 border border-emerald-200'
+                      : 'bg-rose-50 text-rose-900 border border-rose-200'
                       }`}>
                       {testWebhookNotice.text}
                     </div>
@@ -1063,14 +1061,67 @@ function WorkshopPanel() {
   const [form, setForm] = useState({
     title: '',
     speaker: '',
+    schedule_type: 'single',
     date: getTodayDate(),
     time: '08:30 - 12:00 WITA',
     location: 'Lab Microleading MPI FTK UINAM',
     description: '',
     status: 'open',
+    attendance_mode: 'auto',
     is_attendance_open: false,
-    attendance_pin: ''
+    attendance_pin: '',
+    has_certificate: true,
+    require_registration: true,
   });
+
+  // Parse string jam menjadi jam mulai, jam selesai, dan zona waktu
+  const parseTimeParts = (timeStr) => {
+    let startTime = '08:30';
+    let endTime = '12:00';
+    let tz = 'WITA';
+    if (!timeStr || typeof timeStr !== 'string') {
+      return { startTime, endTime, tz, isCustom: false };
+    }
+    if (timeStr.includes('WIB')) tz = 'WIB';
+    else if (timeStr.includes('WIT') && !timeStr.includes('WITA')) tz = 'WIT';
+    else if (timeStr.includes('WITA')) tz = 'WITA';
+
+    const match = timeStr.match(/(\d{1,2})[:.](\d{2})\s*(?:-|s\/d|sampai)\s*(\d{1,2})[:.](\d{2})/i);
+    if (match) {
+      startTime = `${match[1].padStart(2, '0')}:${match[2]}`;
+      endTime = `${match[3].padStart(2, '0')}:${match[4]}`;
+      return { startTime, endTime, tz, isCustom: false };
+    }
+    return { startTime, endTime, tz, isCustom: true };
+  };
+
+  const [timeStart, setTimeStart] = useState('08:30');
+  const [timeEnd, setTimeEnd] = useState('12:00');
+  const [timeZone, setTimeZone] = useState('WITA');
+  const [isCustomTime, setIsCustomTime] = useState(false);
+
+  const handleTimePickerChange = (newStart, newEnd, newTz) => {
+    const s = newStart !== undefined ? newStart : timeStart;
+    const e = newEnd !== undefined ? newEnd : timeEnd;
+    const z = newTz !== undefined ? newTz : timeZone;
+
+    if (newStart !== undefined) setTimeStart(newStart);
+    if (newEnd !== undefined) setTimeEnd(newEnd);
+    if (newTz !== undefined) setTimeZone(newTz);
+
+    if (s && e) {
+      set('time', `${s} - ${e} ${z}`);
+    } else if (s) {
+      set('time', `${s} ${z}`);
+    }
+  };
+
+  const applyTimePreset = (s, e) => {
+    setTimeStart(s);
+    setTimeEnd(e);
+    setIsCustomTime(false);
+    set('time', `${s} - ${e} ${timeZone}`);
+  };
 
   useEffect(() => { getAllWorkshops().then(setWorkshops); }, []);
 
@@ -1080,16 +1131,27 @@ function WorkshopPanel() {
   const handleStartEdit = (ws) => {
     playClick();
     setEditingWorkshopId(ws.id);
+    const inferredScheduleType = ws.schedule_type || (ws.date && ws.date.includes('-') && ws.date.length === 10 ? 'single' : 'recurring');
+    const inferredMode = ws.attendance_mode || (ws.is_attendance_open === true ? 'open' : ws.is_attendance_open === false ? 'closed' : 'auto');
+    const timeParts = parseTimeParts(ws.time || '08:30 - 12:00 WITA');
+    setTimeStart(timeParts.startTime);
+    setTimeEnd(timeParts.endTime);
+    setTimeZone(timeParts.tz);
+    setIsCustomTime(timeParts.isCustom);
     setForm({
       title: ws.title || '',
       speaker: ws.speaker || '',
+      schedule_type: inferredScheduleType,
       date: ws.date || getTodayDate(),
       time: ws.time || '08:30 - 12:00 WITA',
       location: ws.location || 'Lab Microleading MPI FTK UINAM',
       description: ws.description || '',
       status: ws.status || 'open',
-      is_attendance_open: ws.is_attendance_open === true,
-      attendance_pin: ws.attendance_pin || ''
+      attendance_mode: inferredMode,
+      is_attendance_open: inferredMode === 'open',
+      attendance_pin: ws.attendance_pin || '',
+      has_certificate: ws.has_certificate !== false,
+      require_registration: ws.require_registration !== false,
     });
     setShowForm(true);
     window.scrollTo({ top: 100, behavior: 'smooth' });
@@ -1099,16 +1161,24 @@ function WorkshopPanel() {
   const handleCancelForm = () => {
     setShowForm(false);
     setEditingWorkshopId(null);
+    setTimeStart('08:30');
+    setTimeEnd('12:00');
+    setTimeZone('WITA');
+    setIsCustomTime(false);
     setForm({
       title: '',
       speaker: '',
+      schedule_type: 'single',
       date: getTodayDate(),
       time: '08:30 - 12:00 WITA',
       location: 'Lab Microleading MPI FTK UINAM',
       description: '',
       status: 'open',
+      attendance_mode: 'auto',
       is_attendance_open: false,
-      attendance_pin: ''
+      attendance_pin: '',
+      has_certificate: true,
+      require_registration: true,
     });
   };
 
@@ -1116,16 +1186,26 @@ function WorkshopPanel() {
   const handleCloneWorkshop = (ws) => {
     playClick();
     setEditingWorkshopId(null);
+    const inferredScheduleType = ws.schedule_type || (ws.date && ws.date.includes('-') && ws.date.length === 10 ? 'single' : 'recurring');
+    const timeParts = parseTimeParts(ws.time || '08:30 - 12:00 WITA');
+    setTimeStart(timeParts.startTime);
+    setTimeEnd(timeParts.endTime);
+    setTimeZone(timeParts.tz);
+    setIsCustomTime(timeParts.isCustom);
     setForm({
       title: `${ws.title} (Sesi Lanjutan)`,
       speaker: ws.speaker,
-      date: getTodayDate(),
-      time: ws.time,
+      schedule_type: inferredScheduleType,
+      date: inferredScheduleType === 'single' ? getTodayDate() : (ws.date || 'Setiap Kamis (Mingguan)'),
+      time: ws.time || '08:30 - 12:00 WITA',
       location: ws.location,
       description: ws.description,
       status: 'open',
+      attendance_mode: 'auto',
       is_attendance_open: false,
-      attendance_pin: ''
+      attendance_pin: '',
+      has_certificate: ws.has_certificate !== false,
+      require_registration: ws.require_registration !== false,
     });
     setShowForm(true);
     window.scrollTo({ top: 100, behavior: 'smooth' });
@@ -1177,16 +1257,18 @@ function WorkshopPanel() {
     getAllWorkshops().then(setWorkshops);
   };
 
-  // Toggle Presensi Hari-H (Buka/Kunci)
-  const handleToggleAttendance = async (ws) => {
-    const nextAttendance = !(ws.is_attendance_open === true);
-    await updateWorkshop(ws.id, { is_attendance_open: nextAttendance });
+  // Ubah Mode Presensi (Otomatis / Buka Manual / Kunci Manual)
+  const handleSetAttendanceMode = async (ws, newMode) => {
     playClick();
-    if (nextAttendance) {
+    await setWorkshopAttendanceMode(ws.id, newMode);
+    if (newMode === 'open') {
       playSuccess();
-      showToast(`Presensi Hari-H untuk "${ws.title}" telah DIBUKA!`, 'success');
+      showToast(`⚡ Presensi "${ws.title}" DIBUKA MANUAL (Hak Veto Admin). Siap diuji coba!`, 'success');
+    } else if (newMode === 'closed') {
+      showToast(`🔒 Presensi "${ws.title}" DIKUNCI MANUAL.`, 'info');
     } else {
-      showToast(`Presensi untuk "${ws.title}" telah DITUTUP.`, 'info');
+      playSuccess();
+      showToast(`⏰ Presensi "${ws.title}" diatur ke MODE OTOMATIS (Mengikuti Jadwal Hari & Jam WITA).`, 'success');
     }
     getAllWorkshops().then(setWorkshops);
   };
@@ -1204,8 +1286,12 @@ function WorkshopPanel() {
             if (showForm) {
               handleCancelForm();
             } else {
-              setShowForm(true);
+              setTimeStart('08:30');
+              setTimeEnd('12:00');
+              setTimeZone('WITA');
+              setIsCustomTime(false);
               setEditingWorkshopId(null);
+              setShowForm(true);
             }
           }}
           className="btn-shimmer inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-purple-600 to-indigo-600 shadow-md shadow-purple-600/25 shrink-0 cursor-pointer"
@@ -1273,54 +1359,249 @@ function WorkshopPanel() {
                 />
               </div>
 
-              {/* Tanggal */}
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700 uppercase">Tanggal Kegiatan *</label>
-                <input
-                  type="date"
-                  required
-                  value={form.date}
-                  onChange={e => set('date', e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-purple-200 text-sm bg-white focus:border-purple-600 focus:outline-none"
-                />
+              {/* Model Jadwal Pelaksanaan */}
+              <div className="md:col-span-2 space-y-2">
+                <label className="text-xs font-bold text-slate-700 uppercase flex items-center gap-1.5">
+                  <Calendar size={13} className="text-purple-600" />
+                  Model Jadwal Pelaksanaan *
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div
+                    onClick={() => {
+                      set('schedule_type', 'single');
+                      if (!form.date || form.date.length !== 10 || !form.date.includes('-')) {
+                        set('date', getTodayDate());
+                      }
+                    }}
+                    className={`p-3.5 rounded-2xl border-2 flex items-start gap-3 cursor-pointer transition-all ${
+                      form.schedule_type !== 'recurring'
+                        ? 'border-purple-600 bg-purple-50/70 shadow-sm ring-2 ring-purple-500/15'
+                        : 'border-slate-200 bg-white hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
+                      form.schedule_type !== 'recurring' ? 'bg-purple-600 text-white shadow-xs' : 'bg-slate-100 text-slate-500'
+                    }`}>
+                      <CalendarDays size={18} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-1">
+                        <p className="text-xs font-bold text-slate-900">
+                          Tanggal Pasti (Sekali Acara)
+                        </p>
+                        {form.schedule_type !== 'recurring' && (
+                          <span className="w-2 h-2 rounded-full bg-purple-600" />
+                        )}
+                      </div>
+                      <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
+                        Untuk Workshop, Seminar, Pelatihan ilmiah yang berlangsung pada 1 tanggal spesifik.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div
+                    onClick={() => {
+                      set('schedule_type', 'recurring');
+                      if (!form.date || (form.date.length === 10 && form.date.includes('-'))) {
+                        set('date', 'Setiap Kamis (Mingguan)');
+                      }
+                    }}
+                    className={`p-3.5 rounded-2xl border-2 flex items-start gap-3 cursor-pointer transition-all ${
+                      form.schedule_type === 'recurring'
+                        ? 'border-indigo-600 bg-indigo-50/70 shadow-sm ring-2 ring-indigo-500/15'
+                        : 'border-slate-200 bg-white hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
+                      form.schedule_type === 'recurring' ? 'bg-indigo-600 text-white shadow-xs' : 'bg-slate-100 text-slate-500'
+                    }`}>
+                      <Repeat size={18} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-1">
+                        <p className="text-xs font-bold text-slate-900">
+                          Jadwal Rutin / Berkala (Praktikum)
+                        </p>
+                        {form.schedule_type === 'recurring' && (
+                          <span className="w-2 h-2 rounded-full bg-indigo-600" />
+                        )}
+                      </div>
+                      <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
+                        Untuk Praktikum mingguan, piket, atau jam lab berkala. Bebas date-lock kalender tunggal.
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              {/* Waktu - Dropdown */}
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700 uppercase flex items-center gap-1.5">
-                  <Clock size={12} className="text-purple-600" />
-                  Waktu Pelaksanaan (Pilih Waktu)
-                </label>
-                <div className="relative">
-                  <select
-                    value={form.time}
-                    onChange={e => set('time', e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-purple-200 text-sm bg-white focus:border-purple-600 focus:outline-none appearance-none cursor-pointer pr-10"
-                  >
-                    <option value="">-- Pilih Waktu --</option>
-                    <optgroup label="🌅 Pagi">
-                      {TIME_SLOTS.filter(t => t.startsWith('07') || t.startsWith('08') || t.startsWith('09') || t.startsWith('10')).map(t => (
-                        <option key={t} value={t}>{t}</option>
-                      ))}
-                    </optgroup>
-                    <optgroup label="☀️ Siang / Sore">
-                      {TIME_SLOTS.filter(t => t.startsWith('13') || t.startsWith('14')).map(t => (
-                        <option key={t} value={t}>{t}</option>
-                      ))}
-                    </optgroup>
-                    <optgroup label="🌞 Seharian">
-                      {TIME_SLOTS.filter(t => t.startsWith('08:00 - 12') || t.startsWith('08:30 - 16') || t.startsWith('08:00 - 17')).map(t => (
-                        <option key={t} value={t}>{t}</option>
-                      ))}
-                    </optgroup>
-                    <optgroup label="🌙 Malam">
-                      {TIME_SLOTS.filter(t => t.startsWith('19')).map(t => (
-                        <option key={t} value={t}>{t}</option>
-                      ))}
-                    </optgroup>
-                  </select>
-                  <Clock size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-purple-500 pointer-events-none" />
+              {/* Tanggal / Jadwal Input */}
+              {form.schedule_type !== 'recurring' ? (
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700 uppercase">Tanggal Kegiatan *</label>
+                  <input
+                    type="date"
+                    required
+                    value={form.date}
+                    onChange={e => set('date', e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-purple-200 text-sm bg-white focus:border-purple-600 focus:outline-none"
+                  />
                 </div>
+              ) : (
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700 uppercase flex items-center justify-between">
+                    <span>Jadwal Rutin Berkala *</span>
+                    <span className="text-[10px] text-purple-700 font-bold">Bebas Date-Lock</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={form.date}
+                    onChange={e => set('date', e.target.value)}
+                    placeholder="Contoh: Setiap Senin & Kamis, atau Sesi Praktikum Mingguan"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-purple-200 text-sm bg-white focus:border-purple-600 focus:outline-none font-medium"
+                  />
+                  <div className="flex items-center gap-1.5 flex-wrap pt-1">
+                    <span className="text-[10px] text-slate-400 font-semibold">Pilihan Cepat:</span>
+                    {[
+                      'Setiap Senin & Kamis',
+                      'Setiap Selasa & Rabu',
+                      'Setiap Jumat (Praktikum)',
+                      'Jadwal Rutin Mingguan',
+                      'Semester Ganjil 2026/2027'
+                    ].map(preset => (
+                      <button
+                        key={preset}
+                        type="button"
+                        onClick={() => set('date', preset)}
+                        className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200 transition-colors cursor-pointer"
+                      >
+                        {preset}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Waktu Pelaksanaan - Manual Picker (Jam & Menit Presisi) */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-slate-700 uppercase flex items-center gap-1.5">
+                    <Clock size={12} className="text-purple-600" />
+                    Waktu Pelaksanaan (Atur Jam & Menit) *
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const next = !isCustomTime;
+                      setIsCustomTime(next);
+                      if (!next) {
+                        set('time', `${timeStart} - ${timeEnd} ${timeZone}`);
+                      }
+                    }}
+                    className="text-[11px] font-bold text-purple-600 hover:text-purple-800 flex items-center gap-1 transition-colors cursor-pointer"
+                    title="Beralih ke mode teks bebas atau jam:menit"
+                  >
+                    <Sliders size={11} />
+                    {isCustomTime ? 'Mode Jam : Menit' : 'Mode Teks Bebas'}
+                  </button>
+                </div>
+
+                {!isCustomTime ? (
+                  <div className="space-y-2">
+                    {/* Input Jam Mulai & Jam Selesai Manual (Atur Jam & Menit Bebas) */}
+                    <div className="grid grid-cols-2 gap-2.5">
+                      <div className="space-y-1">
+                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide block">
+                          Jam Mulai
+                        </span>
+                        <div className="relative">
+                          <input
+                            type="time"
+                            required
+                            value={timeStart}
+                            onChange={e => handleTimePickerChange(e.target.value, undefined, undefined)}
+                            className="w-full px-3 py-2 rounded-xl border border-purple-200 text-sm font-bold text-slate-800 bg-white focus:border-purple-600 focus:outline-none shadow-2xs"
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide block">
+                          Jam Selesai
+                        </span>
+                        <div className="relative">
+                          <input
+                            type="time"
+                            required
+                            value={timeEnd}
+                            onChange={e => handleTimePickerChange(undefined, e.target.value, undefined)}
+                            className="w-full px-3 py-2 rounded-xl border border-purple-200 text-sm font-bold text-slate-800 bg-white focus:border-purple-600 focus:outline-none shadow-2xs"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Zona Waktu & Preview Hasil */}
+                    <div className="flex items-center justify-between gap-2 flex-wrap pt-0.5">
+                      <div className="flex items-center gap-1">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase mr-0.5">Zona:</span>
+                        {['WITA', 'WIB', 'WIT'].map(tz => (
+                          <button
+                            key={tz}
+                            type="button"
+                            onClick={() => handleTimePickerChange(undefined, undefined, tz)}
+                            className={`px-2 py-0.5 rounded-md text-[10px] font-bold transition-all cursor-pointer ${
+                              timeZone === tz
+                                ? 'bg-purple-600 text-white shadow-2xs'
+                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                            }`}
+                          >
+                            {tz}
+                          </button>
+                        ))}
+                      </div>
+
+                      <div className="text-[11px] font-bold text-purple-700 bg-purple-50 px-2.5 py-0.5 rounded-lg border border-purple-200/80 flex items-center gap-1 shadow-2xs">
+                        <Clock size={11} className="text-purple-600" />
+                        <span>{form.time || `${timeStart} - ${timeEnd} ${timeZone}`}</span>
+                      </div>
+                    </div>
+
+                    {/* Preset Cepat */}
+                    <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                      <span className="text-[10px] text-slate-400 font-semibold">Preset Cepat:</span>
+                      {[
+                        { label: '08:30 - 11:30', s: '08:30', e: '11:30' },
+                        { label: '09:00 - 12:00', s: '09:00', e: '12:00' },
+                        { label: '13:30 - 15:30', s: '13:30', e: '15:30' },
+                        { label: '14:00 - 16:30', s: '14:00', e: '16:30' },
+                        { label: '08:00 - 16:00', s: '08:00', e: '16:00' },
+                      ].map(item => (
+                        <button
+                          key={item.label}
+                          type="button"
+                          onClick={() => applyTimePreset(item.s, item.e)}
+                          className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200 transition-colors cursor-pointer"
+                        >
+                          {item.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    <input
+                      type="text"
+                      required
+                      value={form.time}
+                      onChange={e => set('time', e.target.value)}
+                      placeholder="Contoh: 08:30 - 12:00 WITA atau 08:30 WITA - Selesai"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-purple-200 text-sm font-semibold text-slate-800 bg-white focus:border-purple-600 focus:outline-none"
+                    />
+                    <p className="text-[10px] text-slate-400">
+                      Mode teks bebas aktif: Ketik jam atau rentang waktu khusus jika diperlukan.
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Lokasi */}
@@ -1347,16 +1628,68 @@ function WorkshopPanel() {
                 />
               </div>
 
-              {/* Section 🛡️ Pengaturan Keamanan Presensi & Pendaftaran */}
-              <div className="md:col-span-2 p-4 rounded-2xl bg-purple-50/80 border border-purple-200 space-y-3.5">
+              {/* Section 🛡️ Pengaturan Keamanan Presensi, Sertifikat & Pendaftaran */}
+              <div className="md:col-span-2 p-4 sm:p-5 rounded-2xl bg-purple-50/80 border border-purple-200 space-y-4">
                 <div className="flex items-center gap-2 pb-2 border-b border-purple-200">
                   <ShieldCheck size={16} className="text-purple-700" />
                   <span className="text-xs font-extrabold text-purple-950 uppercase tracking-wider">
-                    Sistem 3 Lapis: Keamanan Presensi Hari-H & Akses Pendaftaran
+                    Pengaturan Jenis Kegiatan, Akses Pendaftaran & Keamanan Presensi
                   </span>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Tipe Kegiatan & Penerbitan Sertifikat */}
+                  <div className="space-y-2 p-3 rounded-xl bg-white border border-purple-100 shadow-2xs">
+                    <label className="text-xs font-bold text-slate-800 uppercase flex items-center gap-1.5">
+                      <Award size={13} className="text-purple-600" />
+                      Penerbitan E-Sertifikat Digital
+                    </label>
+                    <label className="flex items-start gap-2.5 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={form.has_certificate !== false}
+                        onChange={e => set('has_certificate', e.target.checked)}
+                        className="w-4 h-4 mt-0.5 rounded text-purple-600 focus:ring-purple-500 shrink-0"
+                      />
+                      <div>
+                        <span className="text-xs font-bold text-slate-900 block">
+                          {form.has_certificate !== false ? '🏅 Terbitkan E-Sertifikat Resmi' : '📋 Presensi Kehadiran Saja (Tanpa Sertifikat)'}
+                        </span>
+                        <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
+                          {form.has_certificate !== false
+                            ? 'Peserta yang hadir dapat mengunduh sertifikat resmi digital (Workshop / Pelatihan).'
+                            : 'Cocok untuk Praktikum Rutin, Kuliah Lapangan, atau Jam Praktik Lab harian (Hanya mencatat presensi).'}
+                        </p>
+                      </div>
+                    </label>
+                  </div>
+
+                  {/* Kebijakan Pendaftaran Terlebih Dahulu */}
+                  <div className="space-y-2 p-3 rounded-xl bg-white border border-purple-100 shadow-2xs">
+                    <label className="text-xs font-bold text-slate-800 uppercase flex items-center gap-1.5">
+                      <ClipboardCheck size={13} className="text-purple-600" />
+                      Kebijakan Pendaftaran Peserta
+                    </label>
+                    <label className="flex items-start gap-2.5 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={form.require_registration !== false}
+                        onChange={e => set('require_registration', e.target.checked)}
+                        className="w-4 h-4 mt-0.5 rounded text-purple-600 focus:ring-purple-500 shrink-0"
+                      />
+                      <div>
+                        <span className="text-xs font-bold text-slate-900 block">
+                          {form.require_registration !== false ? '🎟️ Wajib Terdaftar Sebelum Presensi' : '🔓 Presensi Terbuka / Walk-in'}
+                        </span>
+                        <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
+                          {form.require_registration !== false
+                            ? 'Mencegah peserta liar. Peserta yang belum daftar otomatis diarahkan daftar (30 detik).'
+                            : 'Peserta dapat langsung mengisi formulir presensi di ruangan tanpa harus mendaftar terlebih dahulu.'}
+                        </p>
+                      </div>
+                    </label>
+                  </div>
+
                   {/* PIN Presensi Hari-H */}
                   <div className="space-y-1">
                     <label className="text-xs font-bold text-slate-700 uppercase flex items-center justify-between">
@@ -1393,40 +1726,135 @@ function WorkshopPanel() {
                       )}
                     </div>
                     <p className="text-[10px] text-slate-500">
-                      Jika diisi, peserta wajib memasukkan PIN ini di formulir presensi untuk klaim sertifikat.
+                      Jika diisi, peserta wajib memasukkan PIN ini di formulir presensi untuk verifikasi ruangan.
                     </p>
                   </div>
 
-                  {/* Saklar Status Presensi Hari-H & Pendaftaran */}
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-slate-700 uppercase flex items-center gap-1.5">
-                      <Sliders size={12} className="text-purple-600" />
-                      Status Gerbang & Akses Peserta
+                  {/* Gerbang Pendaftaran Peserta */}
+                  <div className="space-y-1.5 p-3 rounded-xl bg-white border border-purple-100 shadow-2xs">
+                    <label className="text-xs font-bold text-slate-800 uppercase flex items-center gap-1.5">
+                      <ClipboardCheck size={13} className="text-purple-600" />
+                      Gerbang Pendaftaran Peserta
                     </label>
-                    <div className="flex flex-col gap-2">
-                      <label className="flex items-center gap-2.5 p-2 rounded-xl bg-white border border-purple-100 cursor-pointer hover:bg-purple-50/50 transition-colors">
-                        <input
-                          type="checkbox"
-                          checked={form.status === 'open'}
-                          onChange={e => set('status', e.target.checked ? 'open' : 'closed')}
-                          className="w-4 h-4 rounded text-purple-600 focus:ring-purple-500"
-                        />
-                        <span className="text-xs font-bold text-slate-800">
-                          Buka Pendaftaran Peserta (Formulir E-Ticket)
+                    <label className="flex items-start gap-2.5 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={form.status === 'open'}
+                        onChange={e => set('status', e.target.checked ? 'open' : 'closed')}
+                        className="w-4 h-4 mt-0.5 rounded text-purple-600 focus:ring-purple-500 shrink-0"
+                      />
+                      <div>
+                        <span className="text-xs font-bold text-slate-900 block">
+                          {form.status === 'open' ? '● Pendaftaran Peserta DIBUKA' : '○ Pendaftaran Peserta DITUTUP'}
                         </span>
-                      </label>
+                        <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
+                          {form.status === 'open'
+                            ? 'Calon peserta dapat mendaftar dan mengambil nomor tiket registrasi online.'
+                            : 'Formulir pendaftaran ditutup. Tidak menerima pendaftaran peserta baru.'}
+                        </p>
+                      </div>
+                    </label>
+                  </div>
 
-                      <label className="flex items-center gap-2.5 p-2 rounded-xl bg-white border border-purple-100 cursor-pointer hover:bg-purple-50/50 transition-colors">
-                        <input
-                          type="checkbox"
-                          checked={Boolean(form.is_attendance_open)}
-                          onChange={e => set('is_attendance_open', e.target.checked)}
-                          className="w-4 h-4 rounded text-purple-600 focus:ring-purple-500"
-                        />
-                        <span className="text-xs font-bold text-slate-800">
-                          Buka Presensi Hari-H Sekarang (Klaim E-Sertifikat)
-                        </span>
+                  {/* Mode Kontrol Presensi Hybrid */}
+                  <div className="sm:col-span-2 space-y-2 p-3.5 rounded-xl bg-white border border-purple-200 shadow-2xs">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <label className="text-xs font-bold text-slate-800 uppercase flex items-center gap-1.5">
+                        <Sliders size={13} className="text-purple-600" />
+                        Sistem Kontrol Presensi Hybrid (Pilih Mode)
                       </label>
+                      <span className="text-[10px] font-bold text-purple-700 bg-purple-50 px-2.5 py-0.5 rounded-full border border-purple-200">
+                        🛡️ Mode Otomatis + Hak Veto Admin
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5 pt-1">
+                      {/* Option 1: Otomatis */}
+                      <div
+                        onClick={() => {
+                          set('attendance_mode', 'auto');
+                          set('is_attendance_open', false);
+                        }}
+                        className={`p-3.5 rounded-xl border-2 cursor-pointer transition-all flex items-start gap-3 ${
+                          form.attendance_mode === 'auto' || (!form.attendance_mode && form.is_attendance_open === false)
+                            ? 'border-purple-600 bg-purple-50/80 shadow-xs ring-2 ring-purple-500/20'
+                            : 'border-slate-200 bg-white hover:bg-slate-50'
+                        }`}
+                      >
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
+                          form.attendance_mode === 'auto' || (!form.attendance_mode && form.is_attendance_open === false)
+                            ? 'bg-purple-600 text-white shadow-xs'
+                            : 'bg-slate-100 text-slate-500'
+                        }`}>
+                          <Timer size={16} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <span className="text-xs font-bold text-slate-900 block">
+                            Mode Otomatis
+                          </span>
+                          <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                            Presensi buka-tutup sendiri mengikuti hari & jam WITA kegiatan.
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Option 2: Buka Manual (Hak Veto) */}
+                      <div
+                        onClick={() => {
+                          set('attendance_mode', 'open');
+                          set('is_attendance_open', true);
+                        }}
+                        className={`p-3.5 rounded-xl border-2 cursor-pointer transition-all flex items-start gap-3 ${
+                          form.attendance_mode === 'open' || form.is_attendance_open === true
+                            ? 'border-emerald-600 bg-emerald-50/80 shadow-xs ring-2 ring-emerald-500/20'
+                            : 'border-slate-200 bg-white hover:bg-slate-50'
+                        }`}
+                      >
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
+                          form.attendance_mode === 'open' || form.is_attendance_open === true
+                            ? 'bg-emerald-600 text-white shadow-xs'
+                            : 'bg-slate-100 text-slate-500'
+                        }`}>
+                          <Radio size={16} className={form.attendance_mode === 'open' || form.is_attendance_open === true ? 'animate-pulse' : ''} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <span className="text-xs font-bold text-emerald-950 block">
+                            Buka Manual (Override)
+                          </span>
+                          <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                            Paksa buka presensi kapan saja (cocok untuk uji coba/simulasi lab).
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Option 3: Kunci Manual */}
+                      <div
+                        onClick={() => {
+                          set('attendance_mode', 'closed');
+                          set('is_attendance_open', false);
+                        }}
+                        className={`p-3.5 rounded-xl border-2 cursor-pointer transition-all flex items-start gap-3 ${
+                          form.attendance_mode === 'closed'
+                            ? 'border-rose-600 bg-rose-50/80 shadow-xs ring-2 ring-rose-500/20'
+                            : 'border-slate-200 bg-white hover:bg-slate-50'
+                        }`}
+                      >
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
+                          form.attendance_mode === 'closed'
+                            ? 'bg-rose-600 text-white shadow-xs'
+                            : 'bg-slate-100 text-slate-500'
+                        }`}>
+                          <Lock size={16} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <span className="text-xs font-bold text-rose-950 block">
+                            Kunci Manual (Override)
+                          </span>
+                          <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                            Paksa kunci presensi kapan saja (mencegah absen jika kelas bubar).
+                          </p>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1460,21 +1888,83 @@ function WorkshopPanel() {
           <p className="text-center text-sm text-slate-400 py-8">Belum ada workshop terdaftar.</p>
         )}
         {workshops.map(w => {
-          const isAttOpen = w.is_attendance_open === true;
+          const liveStatus = getWorkshopAttendanceStatus(w);
+          const isManualOpen = w.attendance_mode === 'open' || (w.is_attendance_open === true && !w.attendance_mode);
+          const isManualClosed = w.attendance_mode === 'closed';
+          const isAutoMode = !isManualOpen && !isManualClosed;
+
           return (
             <div key={w.id} className="bento-card rounded-2xl p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-3">
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                <div className="flex items-center gap-2 mb-2 flex-wrap">
+                  {/* Model Jadwal Badge */}
+                  {w.schedule_type === 'recurring' ? (
+                    <span className="px-2.5 py-1 rounded-full text-[10px] font-bold flex items-center gap-1.5 bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-2xs">
+                      <Repeat size={11} className="text-indigo-600" />
+                      Rutin Berkala
+                    </span>
+                  ) : (
+                    <span className="px-2.5 py-1 rounded-full text-[10px] font-bold flex items-center gap-1.5 bg-slate-100 text-slate-700 border border-slate-200 shadow-2xs">
+                      <CalendarDays size={11} className="text-slate-600" />
+                      Tanggal Pasti
+                    </span>
+                  )}
+
+                  {/* Jenis Kegiatan Badge */}
+                  {w.has_certificate !== false ? (
+                    <span className="px-2.5 py-1 rounded-full text-[10px] font-bold flex items-center gap-1.5 bg-amber-50 text-amber-900 border border-amber-200 shadow-2xs">
+                      <Medal size={11} className="text-amber-600" />
+                      Bersertifikat
+                    </span>
+                  ) : (
+                    <span className="px-2.5 py-1 rounded-full text-[10px] font-bold flex items-center gap-1.5 bg-blue-50 text-blue-900 border border-blue-200 shadow-2xs">
+                      <ClipboardCheck size={11} className="text-blue-600" />
+                      Presensi Saja
+                    </span>
+                  )}
+
+                  {/* Kebijakan Pendaftaran Badge */}
+                  {w.require_registration !== false ? (
+                    <span className="px-2.5 py-1 rounded-full text-[10px] font-bold flex items-center gap-1.5 bg-purple-50 text-purple-900 border border-purple-200 shadow-2xs">
+                      <Ticket size={11} className="text-purple-600" />
+                      Wajib Daftar
+                    </span>
+                  ) : (
+                    <span className="px-2.5 py-1 rounded-full text-[10px] font-bold flex items-center gap-1.5 bg-teal-50 text-teal-900 border border-teal-200 shadow-2xs">
+                      <BadgeCheck size={11} className="text-teal-600" />
+                      Bebas Absen
+                    </span>
+                  )}
+
                   {/* Status Pendaftaran Badge */}
-                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${w.status === 'open' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 'bg-slate-200 text-slate-600'}`}>
-                    {w.status === 'open' ? '● Pendaftaran Dibuka' : '○ Pendaftaran Ditutup'}
+                  <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold flex items-center gap-1.5 shadow-2xs ${
+                    w.status === 'open' ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-slate-100 text-slate-600 border border-slate-200'
+                  }`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${w.status === 'open' ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`} />
+                    {w.status === 'open' ? 'Pendaftaran Buka' : 'Pendaftaran Tutup'}
                   </span>
 
-                  {/* Status Presensi Hari-H Badge */}
-                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1 ${isAttOpen ? 'bg-purple-100 text-purple-800 border border-purple-200' : 'bg-amber-100 text-amber-800 border border-amber-200'}`}>
-                    {isAttOpen ? <Zap size={10} className="text-purple-600" /> : <Lock size={10} className="text-amber-600" />}
-                    {isAttOpen ? '⚡ Presensi Hari-H: AKTIF' : '🔒 Presensi: TERKUNCI'}
-                  </span>
+                  {/* Status Presensi Hybrid Badge */}
+                  {isManualOpen ? (
+                    <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-gradient-to-r from-emerald-50 to-teal-50 text-emerald-900 border border-emerald-300 flex items-center gap-1.5 shadow-2xs ring-2 ring-emerald-500/10">
+                      <Radio size={11} className="text-emerald-600 animate-pulse" />
+                      ⚡ Buka Manual (Hak Veto)
+                    </span>
+                  ) : isManualClosed ? (
+                    <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-50 text-rose-800 border border-rose-300 flex items-center gap-1.5 shadow-2xs">
+                      <Lock size={11} className="text-rose-600" />
+                      🔒 Kunci Manual
+                    </span>
+                  ) : (
+                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold border flex items-center gap-1.5 shadow-2xs ${
+                      liveStatus.allowed
+                        ? 'bg-purple-50 text-purple-900 border-purple-300 ring-2 ring-purple-500/10'
+                        : 'bg-slate-100 text-slate-700 border border-slate-200'
+                    }`}>
+                      <Timer size={11} className={liveStatus.allowed ? 'text-purple-600 animate-pulse' : 'text-slate-500'} />
+                      {liveStatus.allowed ? '⏰ Otomatis: AKTIF (Sesuai Jam)' : '⏰ Otomatis: TERKUNCI (Di Luar Jam)'}
+                    </span>
+                  )}
 
                   {/* PIN Info Badge */}
                   {w.attendance_pin ? (
@@ -1484,19 +1974,19 @@ function WorkshopPanel() {
                         playSuccess();
                         showToast(`PIN "${w.attendance_pin}" disalin!`, 'success');
                       }}
-                      className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 flex items-center gap-1 cursor-pointer hover:bg-indigo-100 transition-colors"
+                      className="px-2.5 py-1 rounded-full text-[10px] font-mono font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 flex items-center gap-1.5 cursor-pointer hover:bg-indigo-100 transition-colors shadow-2xs"
                       title="Klik untuk menyalin PIN ke clipboard"
                     >
-                      <KeyRound size={10} /> PIN: {w.attendance_pin}
+                      <KeyRound size={11} className="text-indigo-600" /> PIN: {w.attendance_pin}
                     </span>
                   ) : (
-                    <span className="px-2 py-0.5 rounded-full text-[10px] text-slate-400 bg-slate-50 border border-slate-200">
-                      Tanpa PIN
+                    <span className="px-2 py-1 rounded-full text-[10px] text-slate-400 bg-slate-50 border border-slate-200 flex items-center gap-1">
+                      <ShieldOff size={10} className="text-slate-400" /> Tanpa PIN
                     </span>
                   )}
 
-                  <span className="text-xs text-slate-400 font-medium flex items-center gap-1">
-                    <Calendar size={11} /> {w.date} ({w.time})
+                  <span className="text-xs text-slate-500 font-medium flex items-center gap-1.5">
+                    <CalendarClock size={12} className="text-purple-600" /> {w.date} ({w.time})
                   </span>
                 </div>
                 <h4 className="font-bold text-slate-900 text-sm sm:text-base leading-snug">{w.title}</h4>
@@ -1506,19 +1996,50 @@ function WorkshopPanel() {
               </div>
 
               <div className="flex items-center gap-2 shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-purple-100 flex-wrap">
-                {/* Quick Toggle Presensi Hari-H */}
-                <button
-                  type="button"
-                  onClick={() => handleToggleAttendance(w)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all inline-flex items-center gap-1.5 cursor-pointer shadow-xs ${isAttOpen
-                    ? 'bg-purple-700 text-white hover:bg-purple-800 shadow-purple-700/20'
-                    : 'bg-white text-purple-700 border border-purple-300 hover:bg-purple-50'
+                {/* 3-Way Hybrid Attendance Mode Switcher */}
+                <div className="inline-flex rounded-xl p-1 bg-slate-100/90 border border-slate-200/90 text-xs font-bold gap-1 shadow-2xs">
+                  <button
+                    type="button"
+                    onClick={() => handleSetAttendanceMode(w, 'auto')}
+                    className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                      isAutoMode
+                        ? 'bg-gradient-to-r from-purple-700 to-indigo-700 text-white shadow-sm shadow-purple-900/20'
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-white/80'
                     }`}
-                  title={isAttOpen ? 'Kunci presensi agar peserta tidak bisa absen' : 'Buka presensi hari-H agar peserta bisa absen'}
-                >
-                  {isAttOpen ? <Lock size={12} /> : <Unlock size={12} />}
-                  <span>{isAttOpen ? 'Kunci Presensi' : 'Buka Presensi'}</span>
-                </button>
+                    title="Kembalikan ke mode otomatis (presensi buka-tutup sendiri sesuai jadwal hari & jam WITA)"
+                  >
+                    <Timer size={12} className={isAutoMode ? 'text-purple-200' : 'text-purple-600'} />
+                    <span>Otomatis</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleSetAttendanceMode(w, 'open')}
+                    className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                      isManualOpen
+                        ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-sm shadow-emerald-900/20'
+                        : 'text-slate-600 hover:text-emerald-700 hover:bg-white/80'
+                    }`}
+                    title="Buka presensi sekarang secara manual (Hak Veto Admin untuk simulasi / uji coba)"
+                  >
+                    <Radio size={12} className={isManualOpen ? 'animate-pulse text-white' : 'text-emerald-600'} />
+                    <span>Buka Manual</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleSetAttendanceMode(w, 'closed')}
+                    className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                      isManualClosed
+                        ? 'bg-gradient-to-r from-rose-600 to-red-600 text-white shadow-sm shadow-rose-900/20'
+                        : 'text-slate-600 hover:text-rose-700 hover:bg-white/80'
+                    }`}
+                    title="Kunci presensi secara manual agar peserta tidak dapat mengisi absensi"
+                  >
+                    <Lock size={12} className={isManualClosed ? 'text-rose-200' : 'text-rose-600'} />
+                    <span>Kunci</span>
+                  </button>
+                </div>
 
                 {/* Quick Toggle Pendaftaran */}
                 <button
@@ -1556,20 +2077,20 @@ function WorkshopPanel() {
                   <span>Duplikasi</span>
                 </button>
 
-                {/* Delete Button */}
-                <button
-                  onClick={() => handleDelete(w.id)}
-                  className="p-2 rounded-xl hover:bg-rose-50 text-rose-500 transition-colors cursor-pointer"
-                  title="Hapus workshop"
-                >
-                  <Trash2 size={15} />
-                </button>
-              </div>
+              {/* Delete Button */}
+              <button
+                onClick={() => handleDelete(w.id)}
+                className="p-2 rounded-xl hover:bg-rose-50 text-rose-500 transition-colors cursor-pointer"
+                title="Hapus workshop"
+              >
+                <Trash2 size={15} />
+              </button>
             </div>
-          );
+            </div>
+      );
         })}
-      </div>
     </div>
+    </div >
   );
 }
 
@@ -1850,13 +2371,12 @@ function RegistrationsPanel() {
                       <button
                         type="button"
                         onClick={() => handleToggleStatus(r)}
-                        className={`px-2.5 py-1 rounded-full text-[10px] font-bold border transition-transform hover:scale-105 cursor-pointer ${
-                          r.status === 'terkonfirmasi'
+                        className={`px-2.5 py-1 rounded-full text-[10px] font-bold border transition-transform hover:scale-105 cursor-pointer ${r.status === 'terkonfirmasi'
                             ? 'bg-blue-100 text-blue-800 border-blue-200'
                             : (r.status === 'hadir'
-                               ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
-                               : 'bg-amber-100 text-amber-800 border-amber-200')
-                        }`}
+                              ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
+                              : 'bg-amber-100 text-amber-800 border-amber-200')
+                          }`}
                         title="Klik untuk ubah status pendaftaran"
                       >
                         {r.status === 'terkonfirmasi' ? 'Terkonfirmasi' : (r.status === 'hadir' ? 'Hadir' : r.status || 'Terkonfirmasi')}
@@ -2019,11 +2539,13 @@ function AttendancePanel() {
 
     const headers = [
       'No',
-      'No. Sertifikat',
+      'No. Dokumen / Sertifikat',
+      'Tipe Kegiatan',
       'Nama Lengkap',
       'NIM / Identitas',
       'Asal Instansi',
-      'Kegiatan Workshop',
+      'Kegiatan Workshop / Lab',
+      'Tanggal Kehadiran',
       'Status Bukti Kehadiran',
       'Tautan Google Drive',
       'Waktu Presensi'
@@ -2032,16 +2554,20 @@ function AttendancePanel() {
     const rows = filteredRecords.map((r, i) => [
       i + 1,
       r.cert_number || '-',
+      r.has_certificate === false ? 'Presensi Rutin Lab' : 'Workshop Bersertifikat',
       r.nama || '-',
       r.identitas || '-',
       r.instansi || '-',
       r.workshop_title || '-',
+      r.workshop_date || (r.timestamp ? r.timestamp.split('T')[0] : '-'),
       r.bukti_file ? 'Ada Bukti' : 'Tidak Ada',
       r.drive_url || '-',
       r.timestamp ? new Date(r.timestamp).toLocaleString('id-ID') : '-'
     ]);
 
     const withBukti = filteredRecords.filter(r => r.bukti_file).length;
+    const certCount = filteredRecords.filter(r => r.has_certificate !== false).length;
+    const routineCount = filteredRecords.filter(r => r.has_certificate === false).length;
 
     exportStyledExcel({
       filename: `Rekap_Presensi_Lab_MPI`,
@@ -2051,7 +2577,7 @@ function AttendancePanel() {
       summaryStats: [
         { label: 'TOTAL KEHADIRAN', value: `${filteredRecords.length} Orang`, sublabel: 'Data Presensi Masuk' },
         { label: 'BUKTI TERVERIFIKASI', value: `${withBukti} Peserta`, sublabel: 'Melampirkan Bukti Foto' },
-        { label: 'STATUS E-SERTIFIKAT', value: '100% Terbit', sublabel: 'Terverifikasi Digital' }
+        { label: 'BERSETIFIKAT / RUTIN', value: `${certCount} / ${routineCount}`, sublabel: 'Bersertifikat / Rutin' }
       ],
       headers,
       rows,
@@ -2175,6 +2701,15 @@ function AttendancePanel() {
                 <span className="font-mono text-[10px] bg-purple-100 text-purple-800 px-2 py-0.5 rounded-md font-bold">
                   {rec.cert_number}
                 </span>
+                {rec.has_certificate === false ? (
+                  <span className="text-[10px] font-bold text-blue-800 bg-blue-100 px-2 py-0.5 rounded border border-blue-200">
+                    📋 Presensi Rutin
+                  </span>
+                ) : (
+                  <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded border border-amber-200">
+                    🏅 Bersertifikat
+                  </span>
+                )}
                 <span className="text-[11px] text-slate-400">
                   {new Date(rec.timestamp).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
                 </span>
@@ -2609,10 +3144,10 @@ function NewsPanel() {
                         {isCompressing
                           ? 'Sedang mengoptimalkan foto...'
                           : imageFileName
-                          ? `File Terpilih: ${imageFileName}`
-                          : form.image_path
-                          ? 'Foto sampul saat ini telah tersimpan'
-                          : 'Pilih File Foto dari Komputer Anda'}
+                            ? `File Terpilih: ${imageFileName}`
+                            : form.image_path
+                              ? 'Foto sampul saat ini telah tersimpan'
+                              : 'Pilih File Foto dari Komputer Anda'}
                       </p>
                       <p className="text-[11px] text-slate-500 mt-0.5">
                         Foto otomatis dikompresi agar ringan, jernih, dan cepat dimuat (JPG, PNG, JPEG, WebP)
@@ -2671,8 +3206,8 @@ function NewsPanel() {
                     {isSaving
                       ? 'Menyimpan Berita...'
                       : editingNewsId
-                      ? 'Simpan Perubahan Berita'
-                      : 'Simpan & Terbitkan Berita'}
+                        ? 'Simpan Perubahan Berita'
+                        : 'Simpan & Terbitkan Berita'}
                   </span>
                 </button>
               </div>
@@ -2689,10 +3224,10 @@ function NewsPanel() {
         {news.map(n => {
           const displayDate = n.created_at || n.date
             ? new Date(n.created_at || n.date).toLocaleDateString('id-ID', {
-                day: 'numeric',
-                month: 'long',
-                year: 'numeric'
-              })
+              day: 'numeric',
+              month: 'long',
+              year: 'numeric'
+            })
             : 'Hari ini';
 
           return (
@@ -3858,19 +4393,19 @@ function CalendarPanel({ workshops = [], onNavigate }) {
                   key={day}
                   onClick={() => setSelectedDate(dateStr)}
                   className={`min-h-[72px] sm:min-h-[90px] p-2 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between group ${isSelected
-                      ? 'bg-purple-50/80 border-purple-600 ring-2 ring-purple-600/20 shadow-md'
-                      : isToday
-                        ? 'bg-white border-purple-300 ring-1 ring-purple-300 shadow-xs'
-                        : 'bg-white hover:bg-purple-50/40 border-slate-200 hover:border-purple-200'
+                    ? 'bg-purple-50/80 border-purple-600 ring-2 ring-purple-600/20 shadow-md'
+                    : isToday
+                      ? 'bg-white border-purple-300 ring-1 ring-purple-300 shadow-xs'
+                      : 'bg-white hover:bg-purple-50/40 border-slate-200 hover:border-purple-200'
                     }`}
                 >
                   <div className="flex items-center justify-between">
                     <span
                       className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-extrabold ${isToday
-                          ? 'bg-purple-600 text-white shadow-sm'
-                          : isSelected
-                            ? 'text-purple-700 font-black'
-                            : 'text-slate-700'
+                        ? 'bg-purple-600 text-white shadow-sm'
+                        : isSelected
+                          ? 'text-purple-700 font-black'
+                          : 'text-slate-700'
                         }`}
                     >
                       {day}
@@ -3887,8 +4422,8 @@ function CalendarPanel({ workshops = [], onNavigate }) {
                         key={ev.id}
                         title={`${ev.title} (${ev.time})`}
                         className={`text-[9px] font-bold px-1.5 py-0.5 rounded truncate border ${ev.status === 'open'
-                            ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                            : 'bg-slate-100 text-slate-600 border-slate-200'
+                          ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                          : 'bg-slate-100 text-slate-600 border-slate-200'
                           }`}
                       >
                         {ev.title}

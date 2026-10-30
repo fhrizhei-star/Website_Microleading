@@ -602,6 +602,7 @@ export default function PendaftaranPage() {
                       >
                         {workshops.map(w => (
                           <option key={w.id} value={w.id}>
+                            {w.has_certificate !== false ? '🏅 ' : '📋 '}
                             {w.title} ({w.date})
                           </option>
                         ))}
@@ -726,9 +727,14 @@ export default function PendaftaranPage() {
               <div className="lg:col-span-5 space-y-5">
                 {selectedWorkshopData ? (
                   <div className="bento-card rounded-3xl p-6 sm:p-7 border border-purple-200/80 shadow-lg bg-gradient-to-br from-white via-purple-50/40 to-white">
-                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-bold border border-emerald-200 mb-4">
-                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                      Pendaftaran Dibuka
+                    <div className="flex items-center gap-2 mb-4 flex-wrap">
+                      <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-bold border border-emerald-200">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                        Pendaftaran Dibuka
+                      </div>
+                      <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold border ${selectedWorkshopData?.has_certificate !== false ? 'bg-amber-50 text-amber-800 border-amber-200' : 'bg-blue-50 text-blue-800 border-blue-200'}`}>
+                        {selectedWorkshopData?.has_certificate !== false ? '🏅 Workshop Bersertifikat' : '📋 Presensi Rutin Lab'}
+                      </span>
                     </div>
 
                     <h3 className="font-display font-extrabold text-slate-900 text-lg leading-snug mb-3">
@@ -781,10 +787,17 @@ export default function PendaftaranPage() {
                       </div>
                     </div>
 
-                    <div className="p-3.5 rounded-2xl bg-purple-100/60 border border-purple-200/70 text-xs text-purple-900 flex items-center gap-2.5">
-                      <Award size={18} className="text-purple-700 shrink-0" />
-                      <span>Peserta yang hadir berhak menerima <strong>E-Sertifikat Terverifikasi</strong> resmi Lab Microleading.</span>
-                    </div>
+                    {selectedWorkshopData?.has_certificate !== false ? (
+                      <div className="p-3.5 rounded-2xl bg-purple-100/60 border border-purple-200/70 text-xs text-purple-900 flex items-center gap-2.5">
+                        <Award size={18} className="text-purple-700 shrink-0" />
+                        <span>Peserta yang hadir berhak menerima <strong>E-Sertifikat Terverifikasi</strong> resmi Lab Microleading.</span>
+                      </div>
+                    ) : (
+                      <div className="p-3.5 rounded-2xl bg-blue-50 border border-blue-200 text-xs text-blue-900 flex items-center gap-2.5">
+                        <ClipboardCheck size={18} className="text-blue-700 shrink-0" />
+                        <span>Kegiatan Rutin Lab: Kehadiran peserta akan <strong>tercatat resmi dalam rekap presensi</strong> laboratorium (tanpa sertifikat).</span>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="bento-card rounded-3xl p-6 text-center text-slate-400">

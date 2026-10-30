@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import {
   getAllWorkshops, getAttendance, getNews, getGallery, getMembers,
-  createWorkshop, updateWorkshop, deleteWorkshop, createNews, deleteNews,
+  createWorkshop, updateWorkshop, deleteWorkshop, createNews, updateNews, deleteNews,
   addGalleryItem, deleteGalleryItem,
   createMember, updateMember, deleteMember, saveMembersOrder,
   deleteAttendance, updateAttendanceDriveUrl, getCertSettings, updateCertSettings,
@@ -187,44 +187,71 @@ function CertificateStudioPanel() {
     const file = e.target.files?.[0];
     if (file) {
       if (!file.type.startsWith('image/')) {
-        showAlert('Harap pilih file gambar resmi yang valid (JPG, PNG, atau WebP)!', 'warning');
+        showAlert({
+          title: 'Format Berkas Salah',
+          message: 'Harap pilih file gambar resmi yang valid (JPG, PNG, atau WebP)!',
+          type: 'warning'
+        });
         return;
       }
       const reader = new FileReader();
       reader.onload = (event) => {
+        const rawUrl = event.target?.result;
         const img = new Image();
         img.onload = () => {
-          // Deteksi otomatis orientasi: Portrait jika tinggi > lebar, sebaliknya Landscape
-          const isImgPortrait = img.height > img.width;
-          const detectedOrientation = isImgPortrait ? 'portrait' : 'landscape';
+          try {
+            // Deteksi otomatis orientasi: Portrait jika tinggi > lebar, sebaliknya Landscape
+            const isImgPortrait = img.height > img.width;
+            const detectedOrientation = isImgPortrait ? 'portrait' : 'landscape';
 
-          // Kompresi otomatis via canvas agar pas di Firestore (< 1MB) tanpa pecah
-          const canvas = document.createElement('canvas');
-          const maxDim = 1600;
-          let w = img.width;
-          let h = img.height;
-          if (w > maxDim || h > maxDim) {
-            if (w > h) {
-              h = Math.round((h * maxDim) / w);
-              w = maxDim;
-            } else {
-              w = Math.round((w * maxDim) / h);
-              h = maxDim;
+            // Kompresi otomatis via canvas agar pas di Firestore (< 1MB) tanpa pecah
+            const canvas = document.createElement('canvas');
+            const maxDim = 1600;
+            let w = img.width;
+            let h = img.height;
+            if (w > maxDim || h > maxDim) {
+              if (w > h) {
+                h = Math.round((h * maxDim) / w);
+                w = maxDim;
+              } else {
+                w = Math.round((w * maxDim) / h);
+                h = maxDim;
+              }
             }
+            canvas.width = w;
+            canvas.height = h;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, w, h);
+            const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.82);
+            setSettings((prev) => ({
+              ...prev,
+              template_bg: compressedDataUrl,
+              orientation: detectedOrientation,
+            }));
+            playSuccess();
+          } catch (err) {
+            setSettings((prev) => ({
+              ...prev,
+              template_bg: rawUrl,
+            }));
+            playSuccess();
           }
-          canvas.width = w;
-          canvas.height = h;
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(img, 0, 0, w, h);
-          const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.82);
-          setSettings((prev) => ({
-            ...prev,
-            template_bg: compressedDataUrl,
-            orientation: detectedOrientation,
-          }));
-          playSuccess();
         };
-        img.src = event.target.result;
+        img.onerror = () => {
+          showAlert({
+            title: 'Gagal Memproses Gambar',
+            message: 'Berkas gambar tidak dapat dimuat. Silakan coba file gambar lain.',
+            type: 'error'
+          });
+        };
+        img.src = rawUrl;
+      };
+      reader.onerror = () => {
+        showAlert({
+          title: 'Gagal Membaca File',
+          message: 'Terjadi kendala saat membaca file gambar dari perangkat Anda.',
+          type: 'error'
+        });
       };
       reader.readAsDataURL(file);
     }
@@ -2270,39 +2297,135 @@ function AttendancePanel() {
 }
 
 // ==========================================
-// 4. News Panel (Upload Foto dari Komputer)
+// 4. News Panel (Upload Foto & Manajemen Berita Lengkap)
 // ==========================================
 function NewsPanel() {
+  const getTodayDate = () => new Date().toISOString().split('T')[0];
   const [news, setNews] = useState([]);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ title: '', content: '', image_path: '' });
+  const [editingNewsId, setEditingNewsId] = useState(null);
+  const [form, setForm] = useState({
+    title: '',
+    content: '',
+    image_path: '',
+    date: getTodayDate()
+  });
   const [imageFileName, setImageFileName] = useState('');
+  const [isCompressing, setIsCompressing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const newsFileInputRef = useRef(null);
 
   useEffect(() => { getNews().then(setNews); }, []);
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
-  // Handle Photo Upload from Computer
+  // Handle Photo Upload from Computer with Automatic Canvas Compression
   const handleImageFileChange = (e) => {
     const file = e.target.files?.[0];
     if (file) {
       if (!file.type.startsWith('image/')) {
-        showAlert('Harap pilih berkas gambar yang sah (JPG, PNG, atau WebP)!', 'warning');
+        showAlert({
+          title: 'Format Berkas Salah',
+          message: 'Harap pilih berkas gambar yang sah (JPG, PNG, atau WebP)!',
+          type: 'warning'
+        });
         return;
       }
       setImageFileName(file.name);
+      setIsCompressing(true);
       const reader = new FileReader();
       reader.onload = (event) => {
-        set('image_path', event.target.result);
-        playSuccess();
+        const rawUrl = event.target?.result;
+        const img = new Image();
+        img.onload = () => {
+          try {
+            const canvas = document.createElement('canvas');
+            let w = img.width;
+            let h = img.height;
+            const MAX_DIM = 1200;
+            if (w > MAX_DIM || h > MAX_DIM) {
+              if (w > h) {
+                h = Math.round((h * MAX_DIM) / w);
+                w = MAX_DIM;
+              } else {
+                w = Math.round((w * MAX_DIM) / h);
+                h = MAX_DIM;
+              }
+            }
+            canvas.width = w;
+            canvas.height = h;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, w, h);
+            const compressed = canvas.toDataURL('image/jpeg', 0.82);
+            set('image_path', compressed);
+            playSuccess();
+          } catch (err) {
+            set('image_path', rawUrl);
+            playSuccess();
+          } finally {
+            setIsCompressing(false);
+          }
+        };
+        img.onerror = () => {
+          setIsCompressing(false);
+          showAlert({
+            title: 'Gagal Membaca Gambar',
+            message: 'Berkas gambar tidak dapat diproses. Silakan pilih gambar lain.',
+            type: 'error'
+          });
+        };
+        img.src = rawUrl;
+      };
+      reader.onerror = () => {
+        setIsCompressing(false);
+        showAlert({
+          title: 'Gagal Membaca File',
+          message: 'Terjadi kendala saat membaca file gambar.',
+          type: 'error'
+        });
       };
       reader.readAsDataURL(file);
     }
   };
 
-  const handleCreate = async (e) => {
+  const handleStartEdit = (item) => {
+    playClick();
+    setEditingNewsId(item.id);
+    const itemDate = item.date || (item.created_at ? item.created_at.split('T')[0] : getTodayDate());
+    setForm({
+      title: item.title || '',
+      content: item.content || '',
+      image_path: item.image_path || '',
+      date: itemDate
+    });
+    setImageFileName('');
+    setShowForm(true);
+    window.scrollTo({ top: 180, behavior: 'smooth' });
+  };
+
+  const handleCancelForm = () => {
+    setShowForm(false);
+    setEditingNewsId(null);
+    setForm({
+      title: '',
+      content: '',
+      image_path: '',
+      date: getTodayDate()
+    });
+    setImageFileName('');
+    if (newsFileInputRef.current) newsFileInputRef.current.value = '';
+  };
+
+  const handleSave = async (e) => {
     e.preventDefault();
+    if (!form.title.trim()) {
+      showAlert({
+        title: 'Judul Wajib Diisi',
+        message: 'Harap masukkan judul berita terlebih dahulu.',
+        type: 'warning'
+      });
+      return;
+    }
     if (!form.image_path) {
       showAlert({
         title: 'Foto Sampul Belum Dipilih',
@@ -2311,12 +2434,31 @@ function NewsPanel() {
       });
       return;
     }
-    await createNews(form);
-    playSuccess();
-    setShowForm(false);
-    setForm({ title: '', content: '', image_path: '' });
-    setImageFileName('');
-    getNews().then(setNews);
+
+    setIsSaving(true);
+    try {
+      if (editingNewsId) {
+        await updateNews(editingNewsId, form);
+        playSuccess();
+        showToast('Artikel berita berhasil diperbarui!', 'success');
+      } else {
+        await createNews(form);
+        playSuccess();
+        showToast('Artikel berita baru berhasil diterbitkan!', 'success');
+      }
+      handleCancelForm();
+      const updatedNews = await getNews();
+      setNews(updatedNews || []);
+    } catch (err) {
+      playError();
+      showAlert({
+        title: 'Gagal Menyimpan Berita',
+        message: err?.message || 'Terjadi kesalahan saat menyimpan data berita. Silakan coba lagi.',
+        type: 'error'
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleDelete = async (id) => {
@@ -2329,6 +2471,7 @@ function NewsPanel() {
     if (!ok) return;
     await deleteNews(id);
     playClick();
+    showToast('Berita berhasil dihapus', 'info');
     getNews().then(setNews);
   };
 
@@ -2336,71 +2479,114 @@ function NewsPanel() {
     <div className="space-y-5">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h2 className="font-display font-extrabold text-xl text-slate-900">Berita</h2>
-          <p className="text-xs text-slate-500">Kelola warta kabar praktikum dan agenda penting Laboratorium MPI.</p>
+          <h2 className="font-display font-extrabold text-xl text-slate-900">Berita & Warta Laboratorium</h2>
+          <p className="text-xs text-slate-500">Kelola warta kabar praktikum, agenda kegiatan, dan pengumuman Laboratorium MPI.</p>
         </div>
         <button
-          onClick={() => { playClick(); setShowForm(!showForm); }}
+          onClick={() => {
+            playClick();
+            if (showForm) {
+              handleCancelForm();
+            } else {
+              setEditingNewsId(null);
+              setForm({
+                title: '',
+                content: '',
+                image_path: '',
+                date: getTodayDate()
+              });
+              setShowForm(true);
+            }
+          }}
           className="btn-shimmer inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-purple-600 to-indigo-600 shadow-md shadow-purple-600/25 shrink-0 cursor-pointer"
         >
           {showForm ? <X size={15} /> : <Plus size={15} />}
-          <span>{showForm ? 'Tutup Form Berita' : 'Tambah Berita Baru'}</span>
+          <span>{showForm ? (editingNewsId ? 'Batal Edit' : 'Tutup Form Berita') : 'Tambah Berita Baru'}</span>
         </button>
       </div>
 
       <AnimatePresence>
         {showForm && (
           <motion.div
-            className="glass-panel rounded-3xl p-5 sm:p-7 border border-purple-200 mb-5"
+            className="glass-panel rounded-3xl p-5 sm:p-7 border border-purple-200 mb-5 shadow-xl"
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
           >
-            <div className="flex items-center gap-2 mb-4 pb-3 border-b border-purple-100">
-              <div className="w-8 h-8 rounded-xl bg-purple-600 text-white flex items-center justify-center shadow-md shadow-purple-600/25">
-                <Newspaper size={16} />
+            <div className="flex items-center justify-between mb-4 pb-3 border-b border-purple-100 flex-wrap gap-2">
+              <div className="flex items-center gap-2.5">
+                <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-white ${editingNewsId ? 'bg-amber-600 shadow-amber-600/30' : 'bg-purple-600 shadow-purple-600/25'} shadow-md`}>
+                  {editingNewsId ? <Edit3 size={16} /> : <Newspaper size={16} />}
+                </div>
+                <div>
+                  <h3 className="font-display font-extrabold text-slate-900 text-base leading-tight">
+                    {editingNewsId ? 'Edit Artikel Berita' : 'Buat Artikel Berita Baru'}
+                  </h3>
+                  <p className="text-[11px] text-slate-500">
+                    {editingNewsId ? 'Perbarui judul, isi berita, tanggal rilis, atau foto sampul artikel' : 'Unggah foto dokumentasi dari komputer dan tuliskan informasi berita kegiatan'}
+                  </p>
+                </div>
               </div>
-              <div>
-                <h3 className="font-display font-extrabold text-slate-900 text-base">Buat Artikel Berita Baru</h3>
-                <p className="text-[11px] text-slate-500">Unggah foto dokumentasi dari komputer dan tuliskan informasi berita kegiatan</p>
-              </div>
+              {editingNewsId && (
+                <span className="px-3 py-1 rounded-full bg-amber-100 text-amber-800 text-xs font-bold flex items-center gap-1.5 border border-amber-200">
+                  <Edit3 size={12} /> Mode Edit Berita
+                </span>
+              )}
             </div>
 
-            <form onSubmit={handleCreate} className="space-y-4">
-              <div>
-                <label className="text-xs font-bold text-slate-700 uppercase block mb-1">Judul Berita *</label>
-                <input
-                  type="text"
-                  required
-                  value={form.title}
-                  onChange={e => set('title', e.target.value)}
-                  placeholder="Ketik judul artikel berita..."
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-purple-200 text-sm bg-white focus:outline-none focus:border-purple-600"
-                />
+            <form onSubmit={handleSave} className="space-y-4">
+              {/* Judul & Tanggal Terbit Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="md:col-span-2 space-y-1">
+                  <label className="text-xs font-bold text-slate-700 uppercase block">Judul Berita *</label>
+                  <input
+                    type="text"
+                    required
+                    value={form.title}
+                    onChange={e => set('title', e.target.value)}
+                    placeholder="Ketik judul artikel berita..."
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-purple-200 text-sm bg-white focus:outline-none focus:border-purple-600"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700 uppercase flex items-center gap-1.5">
+                    <Calendar size={13} className="text-purple-600" />
+                    Tanggal Terbit Berita *
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={form.date}
+                    onChange={e => set('date', e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-purple-200 text-sm bg-white focus:outline-none focus:border-purple-600 cursor-pointer"
+                  />
+                </div>
               </div>
 
-              <div>
-                <label className="text-xs font-bold text-slate-700 uppercase block mb-1">Konten Berita *</label>
+              {/* Konten Berita */}
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-700 uppercase block">Konten Berita *</label>
                 <textarea
                   value={form.content}
                   onChange={e => set('content', e.target.value)}
-                  rows="3"
+                  rows="4"
                   required
                   placeholder="Tuliskan isi berita lengkap..."
                   className="w-full px-3.5 py-2.5 rounded-xl border border-purple-200 text-sm bg-white focus:outline-none focus:border-purple-600 resize-none"
                 />
               </div>
 
-              {/* Upload Foto dari Komputer */}
-              <div>
-                <label className="text-xs font-bold text-slate-700 uppercase block mb-1.5">
+              {/* Upload Foto dari Komputer dengan Kompresi Otomatis */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-700 uppercase block">
                   Foto Sampul Berita (Pilih dari Komputer) *
                 </label>
 
                 <div className="flex flex-col sm:flex-row items-center gap-4 p-4 rounded-2xl bg-purple-50/50 border-2 border-dashed border-purple-200">
                   {/* Image Preview */}
                   {form.image_path ? (
-                    <div className="w-full sm:w-44 h-32 rounded-xl overflow-hidden bg-white border border-purple-200 shrink-0 relative group">
+                    <div className="w-full sm:w-44 h-32 rounded-xl overflow-hidden bg-white border border-purple-200 shrink-0 relative group shadow-xs">
                       <img
                         src={form.image_path}
                         alt="Preview Sampul"
@@ -2420,10 +2606,16 @@ function NewsPanel() {
                   <div className="flex-1 space-y-2 text-center sm:text-left">
                     <div>
                       <p className="font-bold text-slate-900 text-xs sm:text-sm">
-                        {imageFileName ? `File Terpilih: ${imageFileName}` : 'Pilih File Foto dari Komputer Anda'}
+                        {isCompressing
+                          ? 'Sedang mengoptimalkan foto...'
+                          : imageFileName
+                          ? `File Terpilih: ${imageFileName}`
+                          : form.image_path
+                          ? 'Foto sampul saat ini telah tersimpan'
+                          : 'Pilih File Foto dari Komputer Anda'}
                       </p>
                       <p className="text-[11px] text-slate-500 mt-0.5">
-                        Format yang didukung: JPG, PNG, JPEG, WebP
+                        Foto otomatis dikompresi agar ringan, jernih, dan cepat dimuat (JPG, PNG, JPEG, WebP)
                       </p>
                     </div>
 
@@ -2439,10 +2631,11 @@ function NewsPanel() {
                       <button
                         type="button"
                         onClick={() => newsFileInputRef.current?.click()}
-                        className="btn-shimmer inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-white bg-purple-600 hover:bg-purple-700 transition-colors cursor-pointer"
+                        disabled={isCompressing}
+                        className="btn-shimmer inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-white bg-purple-600 hover:bg-purple-700 transition-colors cursor-pointer disabled:opacity-60"
                       >
                         <Upload size={13} />
-                        <span>{form.image_path ? 'Ganti Foto dari Komputer' : 'Pilih Foto dari Komputer'}</span>
+                        <span>{isCompressing ? 'Memproses...' : form.image_path ? 'Ganti Foto dari Komputer' : 'Pilih Foto dari Komputer'}</span>
                       </button>
 
                       {form.image_path && (
@@ -2459,19 +2652,28 @@ function NewsPanel() {
                 </div>
               </div>
 
+              {/* Form Action Buttons */}
               <div className="flex gap-2 justify-end pt-2">
                 <button
                   type="button"
-                  onClick={() => setShowForm(false)}
+                  onClick={handleCancelForm}
                   className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 cursor-pointer"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="btn-shimmer px-6 py-2.5 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-purple-600 to-indigo-600 shadow-md shadow-purple-600/25 cursor-pointer"
+                  disabled={isSaving || isCompressing}
+                  className="btn-shimmer px-6 py-2.5 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-purple-600 to-indigo-600 shadow-md shadow-purple-600/25 cursor-pointer flex items-center gap-1.5 disabled:opacity-60"
                 >
-                  Simpan & Terbitkan Berita
+                  <Save size={14} />
+                  <span>
+                    {isSaving
+                      ? 'Menyimpan Berita...'
+                      : editingNewsId
+                      ? 'Simpan Perubahan Berita'
+                      : 'Simpan & Terbitkan Berita'}
+                  </span>
                 </button>
               </div>
             </form>
@@ -2479,25 +2681,62 @@ function NewsPanel() {
         )}
       </AnimatePresence>
 
+      {/* News List */}
       <div className="space-y-3">
-        {news.map(n => (
-          <div key={n.id} className="bento-card rounded-2xl p-4 flex items-center gap-4">
-            <div className="w-16 h-16 rounded-xl overflow-hidden bg-slate-100 shrink-0 border border-purple-100">
-              <img src={n.image_path || '/img/bg.jpg'} alt="" className="w-full h-full object-cover" />
+        {news.length === 0 && (
+          <p className="text-center text-sm text-slate-400 py-8">Belum ada artikel berita yang diterbitkan.</p>
+        )}
+        {news.map(n => {
+          const displayDate = n.created_at || n.date
+            ? new Date(n.created_at || n.date).toLocaleDateString('id-ID', {
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric'
+              })
+            : 'Hari ini';
+
+          return (
+            <div key={n.id} className="bento-card rounded-2xl p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="flex items-start sm:items-center gap-4 flex-1 min-w-0">
+                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden bg-slate-100 shrink-0 border border-purple-100 shadow-xs">
+                  <img src={n.image_path || '/img/bg.jpg'} alt="" className="w-full h-full object-cover" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-200">
+                      <Calendar size={10} className="text-purple-600" />
+                      {displayDate}
+                    </span>
+                  </div>
+                  <h4 className="font-bold text-sm sm:text-base text-slate-900 leading-snug line-clamp-2">{n.title}</h4>
+                  <p className="text-xs text-slate-500 line-clamp-2 mt-1 leading-relaxed">{n.content}</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-purple-100 justify-end">
+                {/* Edit Button */}
+                <button
+                  type="button"
+                  onClick={() => handleStartEdit(n)}
+                  className="px-3 py-1.5 rounded-xl text-xs font-bold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 transition-colors inline-flex items-center gap-1 cursor-pointer"
+                  title="Edit artikel berita ini"
+                >
+                  <Edit3 size={13} />
+                  <span>Edit</span>
+                </button>
+
+                {/* Delete Button */}
+                <button
+                  onClick={() => handleDelete(n.id)}
+                  className="p-2 rounded-xl hover:bg-rose-50 text-rose-500 transition-colors shrink-0 cursor-pointer"
+                  title="Hapus berita"
+                >
+                  <Trash2 size={15} />
+                </button>
+              </div>
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-bold text-sm text-slate-900 leading-snug">{n.title}</p>
-              <p className="text-xs text-slate-500 line-clamp-1 mt-0.5">{n.content}</p>
-            </div>
-            <button
-              onClick={() => handleDelete(n.id)}
-              className="p-2 rounded-xl hover:bg-rose-50 text-rose-500 transition-colors shrink-0 cursor-pointer"
-              title="Hapus berita"
-            >
-              <Trash2 size={15} />
-            </button>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

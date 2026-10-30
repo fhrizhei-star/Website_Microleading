@@ -66,109 +66,27 @@ const DEFAULT_WORKSHOPS = [
   },
 ];
 
-const DEFAULT_ATTENDANCE = [
-  {
-    id: "attn_1",
-    workshop_id: "ws_1",
-    workshop_title: "Workshop Penulisan Karya Tulis Ilmiah & Publikasi Jurnal Nasional",
-    speaker: "Dr. H. Muhammad Ilyas, M.Pd.",
-    workshop_date: "2026-10-26",
-    nama: "Ahmad Rizky Pratama, S.Pd.",
-    identitas: "20400121045",
-    instansi: "UIN Alauddin Makassar",
-    email: "ahmad.rizky@gmail.com",
-    whatsapp: "081234567890",
-    kesan: "Materi sangat aplikatif dan membantu persiapan publikasi skripsi.",
-    cert_number: "CERT/MPI/2026/0142",
-    cert_bg: "/img/cert-template.jpg",
-    cert_layout: {
-      top: 48,
-      left: 50,
-      fontSize: 34,
-      fontFamily: "'Playfair Display', Georgia, serif",
-      color: "#854d0e",
-      fontWeight: "700",
-      underline: false,
-    },
-    drive_url: "https://drive.google.com/drive/folders/1EXAMPLE_DRIVE_FOLDER_ID",
-    timestamp: new Date(Date.now() - 3600000).toISOString(),
-  },
-];
+const DEFAULT_ATTENDANCE = [];
 
-const DEFAULT_REGISTRATIONS = [
-  {
-    id: "reg_1",
-    reg_code: "REG-MPI-2026-0001",
-    workshop_id: "ws_1",
-    workshop_title: "Workshop Penulisan Karya Tulis Ilmiah & Publikasi Jurnal Nasional",
-    workshop_date: "2026-10-26",
-    workshop_time: "08:30 - 12:00 WITA",
-    workshop_location: "Laboratorium Microleading MPI",
-    speaker: "Dr. H. Muhammad Ilyas, M.Pd.",
-    nama: "Ahmad Rizky Pratama, S.Pd.",
-    nim_nip: "20400121045",
-    instansi: "UIN Alauddin Makassar",
-    email: "ahmad.rizky@gmail.com",
-    whatsapp: "081234567890",
-    alasan: "Memperdalam sitasi Mendeley dan kiat tembus jurnal SINTA untuk persiapan skripsi.",
-    status: "terkonfirmasi",
-    is_attended: true,
-    registered_at: new Date(Date.now() - 86400000 * 3).toISOString(),
-  },
-  {
-    id: "reg_2",
-    reg_code: "REG-MPI-2026-0002",
-    workshop_id: "ws_2",
-    workshop_title: "Pelatihan Public Speaking & Leadership Santri Modern",
-    workshop_date: "2026-10-28",
-    workshop_time: "09:00 - 12:00 WITA",
-    workshop_location: "Aula FTK Kampus II UINAM",
-    speaker: "Ustadz Rahmat Hidayat, M.I.Kom.",
-    nama: "Siti Nurhaliza, S.Pd.",
-    nim_nip: "20400121046",
-    instansi: "UIN Alauddin Makassar",
-    email: "siti.nurhaliza@gmail.com",
-    whatsapp: "082198765432",
-    alasan: "Melatih kepercayaan diri dalam berbicara di depan umum dan kepemimpinan kelas.",
-    status: "terkonfirmasi",
-    is_attended: false,
-    registered_at: new Date(Date.now() - 86400000 * 2).toISOString(),
-  },
-  {
-    id: "reg_3",
-    reg_code: "REG-MPI-2026-0003",
-    workshop_id: "ws_3",
-    workshop_title: "Workshop Pemanfaatan AI & Media Digital dalam Pembelajaran Islam",
-    workshop_date: "2026-10-30",
-    workshop_time: "08:30 - 11:30 WITA",
-    workshop_location: "Lab Komputer & Multimedia MPI",
-    speaker: "Fahri Pratama, S.Kom., M.T.",
-    nama: "Muh. Farhan Alamsyah",
-    nim_nip: "20400121048",
-    instansi: "Universitas Negeri Makassar",
-    email: "farhan.alamsyah@gmail.com",
-    whatsapp: "085211223344",
-    alasan: "Tertarik mempelajari implementasi AI secara etis dalam media pembelajaran interaktif.",
-    status: "terkonfirmasi",
-    is_attended: false,
-    registered_at: new Date(Date.now() - 86400000).toISOString(),
-  },
-];
+const DEFAULT_REGISTRATIONS = [];
 
 const DEFAULT_NEWS = [
   {
+    id: "news_1",
     title: "Pembukaan Praktikum Laboratorium Microleading Semester Baru",
     content: "Laboratorium Manajemen Pendidikan Islam (MPI) resmi membuka sesi praktikum baru. Mahasiswa dapat melihat jadwal kelas serta silabus pembelajaran interaktif di laboratorium.",
     image_path: "/img/bg.jpg",
     created_at: new Date().toISOString(),
   },
   {
+    id: "news_2",
     title: "Workshop Penulisan Karya Tulis Ilmiah Nasional",
     content: "Akan diadakan bimbingan intensif penulisan dan publikasi sitasi jurnal ilmiah bagi seluruh mahasiswa tingkat akhir di aula laboratorium.",
     image_path: "/img/campus1.jpg",
     created_at: new Date(Date.now() - 86400000).toISOString(),
   },
   {
+    id: "news_3",
     title: "Pengumuman Jadwal Praktikum Semester Genap 2026",
     content: "Jadwal praktikum semester genap 2026 telah ditetapkan. Seluruh mahasiswa diwajibkan hadir dan mengisi presensi digital melalui portal Lab Microleading.",
     image_path: "/img/kelas 1.jpeg",
@@ -304,14 +222,6 @@ async function syncFirestoreSeeds() {
         password: "admin123",
         created_at: new Date().toISOString()
       });
-    }
-
-    const regSnap = await getDocs(collection(db, 'registrations'));
-    if (regSnap.empty) {
-      console.log('🌱 [Firebase] Seeding data awal registrations...');
-      for (const r of DEFAULT_REGISTRATIONS) {
-        await setDoc(doc(db, 'registrations', r.id), r);
-      }
     }
   } catch (err) {
     isSeeding = false;
@@ -516,22 +426,22 @@ export async function deleteWorkshop(id) {
 // ========================
 export async function getAttendance(queryStr = "") {
   let records = [];
+  let fromFirebase = false;
   if (isFirebaseConfigured && db) {
     try {
       const q = query(collection(db, 'attendance'), orderBy('timestamp', 'desc'));
       const snap = await getDocs(q);
-      if (!snap.empty) {
-        records = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        setStore("mpi_attendance", records);
-      }
+      fromFirebase = true;
+      records = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      setStore("mpi_attendance", records);
     } catch (err) {
       console.warn('⚠️ [Firestore] getAttendance error:', err.message);
     }
   }
 
-  if (records.length === 0) {
+  if (!fromFirebase) {
     await delay();
-    records = getStore("mpi_attendance");
+    records = getStore("mpi_attendance") || [];
   }
 
   if (queryStr) {
@@ -664,20 +574,20 @@ export async function updateAttendanceDriveUrl(id, drive_url) {
 // ========================
 export async function getRegistrations(workshopId = "") {
   let list = [];
+  let fromFirebase = false;
   if (isFirebaseConfigured && db) {
     try {
       const q = query(collection(db, 'registrations'), orderBy('registered_at', 'desc'));
       const snap = await getDocs(q);
-      if (!snap.empty) {
-        list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        setStore("mpi_registrations", list);
-      }
+      fromFirebase = true;
+      list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      setStore("mpi_registrations", list);
     } catch (err) {
       console.warn('⚠️ [Firestore] getRegistrations error:', err.message);
     }
   }
 
-  if (list.length === 0) {
+  if (!fromFirebase) {
     await delay();
     list = getStore("mpi_registrations") || [];
   }
@@ -783,6 +693,7 @@ export async function deleteRegistration(id) {
   await delay();
   const list = (getStore("mpi_registrations") || []).filter(r => String(r.id) !== String(id));
   setStore("mpi_registrations", list);
+  window.dispatchEvent(new CustomEvent('mpi_registrations_updated'));
   return true;
 }
 
@@ -887,40 +798,60 @@ export async function getNews() {
     }
   }
   await delay();
-  return getStore("mpi_news").sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+  const rawList = getStore("mpi_news") || [];
+  const list = rawList.map((n, idx) => ({ ...n, id: n.id || `news_${idx + 1}` }));
+  return list.sort((a, b) => new Date(b.created_at || b.date || 0) - new Date(a.created_at || a.date || 0));
 }
 
 export async function createNews(data) {
-  const newItem = { ...data, created_at: new Date().toISOString() };
+  const publishDate = data.date || (data.created_at ? data.created_at.split('T')[0] : new Date().toISOString().split('T')[0]);
+  const createdAtIso = data.created_at || new Date(publishDate + 'T12:00:00Z').toISOString();
+
+  const newItem = {
+    ...data,
+    date: publishDate,
+    created_at: createdAtIso
+  };
+
   if (isFirebaseConfigured && db) {
     try {
       const docRef = await addDoc(collection(db, 'news'), newItem);
       const created = { ...newItem, id: docRef.id };
-      setStore("mpi_news", [created, ...getStore("mpi_news")]);
+      const current = getStore("mpi_news") || [];
+      setStore("mpi_news", [created, ...current]);
       return created;
     } catch (err) {
       console.warn('⚠️ [Firestore] createNews error:', err.message);
     }
   }
   await delay();
-  const news = getStore("mpi_news");
+  const rawNews = getStore("mpi_news") || [];
+  const news = rawNews.map((n, idx) => ({ ...n, id: n.id || `news_${idx + 1}` }));
   const localItem = { ...newItem, id: `news_${Date.now()}` };
   setStore("mpi_news", [localItem, ...news]);
   return localItem;
 }
 
 export async function updateNews(id, data) {
+  const updatedData = { ...data };
+  if (updatedData.date) {
+    updatedData.created_at = new Date(updatedData.date + 'T12:00:00Z').toISOString();
+  }
+
   if (isFirebaseConfigured && db) {
     try {
-      await updateDoc(doc(db, 'news', String(id)), data);
+      const docRef = doc(db, 'news', String(id));
+      await setDoc(docRef, updatedData, { merge: true });
     } catch (err) {
       console.warn('⚠️ [Firestore] updateNews error:', err.message);
     }
   }
   await delay();
-  const news = getStore("mpi_news").map(n => String(n.id) === String(id) ? { ...n, ...data } : n);
-  setStore("mpi_news", news);
-  return news.find(n => String(n.id) === String(id));
+  const rawNews = getStore("mpi_news") || [];
+  const news = rawNews.map((n, idx) => ({ ...n, id: n.id || `news_${idx + 1}` }));
+  const updatedList = news.map(n => String(n.id) === String(id) ? { ...n, ...updatedData } : n);
+  setStore("mpi_news", updatedList);
+  return updatedList.find(n => String(n.id) === String(id));
 }
 
 export async function deleteNews(id) {
@@ -932,7 +863,9 @@ export async function deleteNews(id) {
     }
   }
   await delay();
-  setStore("mpi_news", getStore("mpi_news").filter(n => String(n.id) !== String(id)));
+  const rawNews = getStore("mpi_news") || [];
+  const news = rawNews.map((n, idx) => ({ ...n, id: n.id || `news_${idx + 1}` }));
+  setStore("mpi_news", news.filter(n => String(n.id) !== String(id)));
   return true;
 }
 

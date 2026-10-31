@@ -40,14 +40,23 @@ function formatFileSize(bytes) {
 
 function getFileIcon(fileName) {
   const ext = fileName?.split('.').pop()?.toLowerCase();
-  if (['jpg', 'jpeg', 'png'].includes(ext)) {
+  if (['jpg', 'jpeg', 'png', 'webp', 'gif', 'heic', 'bmp', 'svg'].includes(ext)) {
     return <ImageIcon size={20} className="text-emerald-500" />;
   }
   if (ext === 'pdf') {
     return <FileText size={20} className="text-rose-500" />;
   }
-  if (['docx', 'doc'].includes(ext)) {
+  if (['docx', 'doc', 'rtf', 'odt', 'txt'].includes(ext)) {
     return <FileText size={20} className="text-blue-500" />;
+  }
+  if (['xlsx', 'xls', 'csv'].includes(ext)) {
+    return <FileText size={20} className="text-emerald-600" />;
+  }
+  if (['pptx', 'ppt'].includes(ext)) {
+    return <FileText size={20} className="text-amber-500" />;
+  }
+  if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext)) {
+    return <File size={20} className="text-orange-500" />;
   }
   return <File size={20} className="text-purple-500" />;
 }
@@ -752,23 +761,17 @@ function AttendanceForm({ workshops, selectedWorkshop, onGoToCek }) {
     setUploadError('');
     if (!file) return;
 
-    const allowedExtensions = ['jpg', 'jpeg', 'png', 'pdf', 'docx', 'doc'];
-    const fileExt = file.name.split('.').pop()?.toLowerCase();
+    const fileExt = file.name.split('.').pop()?.toLowerCase() || '';
+    const isImage = file.type.startsWith('image/') || ['jpg', 'jpeg', 'png', 'webp', 'bmp', 'heic', 'heif'].includes(fileExt);
 
-    if (!allowedExtensions.includes(fileExt)) {
-      setUploadError('Format file tidak didukung! Harap unggah file JPG, PNG, PDF, atau DOCX.');
-      playError();
-      return;
-    }
-
-    // Otomatis kompres gambar jika file bertipe foto (JPG, PNG, WebP)
-    if (file.type.startsWith('image/') || ['jpg', 'jpeg', 'png'].includes(fileExt)) {
+    // Otomatis kompres gambar jika file bertipe foto (JPG, PNG, WebP, dll.)
+    if (isImage) {
       const reader = new FileReader();
       reader.onload = (e) => {
         const img = new Image();
         img.onload = () => {
           const canvas = document.createElement('canvas');
-          const maxDim = 1000;
+          const maxDim = 1200;
           let w = img.width;
           let h = img.height;
           if (w > maxDim || h > maxDim) {
@@ -796,8 +799,14 @@ function AttendanceForm({ workshops, selectedWorkshop, onGoToCek }) {
           playSuccess();
         };
         img.onerror = () => {
-          setUploadError('Gagal memproses gambar. Harap pilih gambar lain.');
-          playError();
+          // Jika format gambar khusus (seperti SVG) tidak dapat di-render ke canvas, simpan dataUrl langsung
+          setBuktiFile({
+            name: file.name,
+            size: file.size,
+            type: file.type || 'image/jpeg',
+            dataUrl: e.target.result,
+          });
+          playSuccess();
         };
         img.src = e.target.result;
       };
@@ -809,9 +818,9 @@ function AttendanceForm({ workshops, selectedWorkshop, onGoToCek }) {
       return;
     }
 
-    // Untuk dokumen PDF / DOCX, batasi maksimal 800KB agar muat di Cloud Firestore
+    // Untuk file non-gambar (PDF, DOCX, XLSX, TXT, ZIP, dll.), batasi maksimal 800KB agar muat di Cloud Firestore
     if (file.size > 800 * 1024) {
-      setUploadError('Ukuran dokumen melebihi 800 KB! Disarankan mengambil foto/screenshot bukti lalu mengunggahnya sebagai gambar JPG/PNG.');
+      setUploadError('Ukuran file dokumen melebihi 800 KB! Disarankan mengambil foto/screenshot bukti lalu mengunggahnya, karena gambar otomatis dikompres.');
       playError();
       return;
     }
@@ -821,7 +830,7 @@ function AttendanceForm({ workshops, selectedWorkshop, onGoToCek }) {
       setBuktiFile({
         name: file.name,
         size: file.size,
-        type: file.type,
+        type: file.type || 'application/octet-stream',
         dataUrl: e.target.result,
       });
       playSuccess();
@@ -939,7 +948,7 @@ function AttendanceForm({ workshops, selectedWorkshop, onGoToCek }) {
     }
 
     if (!buktiFile) {
-      setUploadError('Wajib melampirkan berkas bukti kehadiran (JPG, PNG, PDF, atau DOCX)!');
+      setUploadError('Wajib melampirkan berkas bukti kehadiran!');
       playError();
       document.getElementById('section-bukti')?.scrollIntoView({ behavior: 'smooth' });
       return;
@@ -1514,13 +1523,13 @@ function AttendanceForm({ workshops, selectedWorkshop, onGoToCek }) {
                 <h3 className="font-display font-extrabold text-slate-900 text-sm sm:text-base leading-tight">
                   Unggah Bukti Kehadiran <span className="text-rose-500">*</span>
                 </h3>
-                <p className="text-[11px] text-slate-500">Foto selfie di lokasi, screenshot zoom, atau surat tugas praktikum</p>
+                <p className="text-[11px] text-slate-500">Foto selfie di lokasi, screenshot zoom, surat tugas, atau dokumen bukti lainnya</p>
               </div>
             </div>
 
             {/* Format badges */}
-            <div className="flex items-center gap-1.5">
-              {['JPG', 'PNG', 'PDF', 'DOCX'].map(fmt => (
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {['Bebas Format', 'Foto / Gambar', 'PDF', 'Dokumen'].map(fmt => (
                 <span key={fmt} className="px-2 py-0.5 rounded-md bg-purple-100 text-purple-800 text-[10px] font-extrabold border border-purple-200">
                   {fmt}
                 </span>
@@ -1543,7 +1552,6 @@ function AttendanceForm({ workshops, selectedWorkshop, onGoToCek }) {
               <input
                 ref={fileInputRef}
                 type="file"
-                accept=".jpg,.jpeg,.png,.pdf,.docx,.doc,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/*"
                 onChange={handleFileChange}
                 className="hidden"
               />
@@ -1557,13 +1565,13 @@ function AttendanceForm({ workshops, selectedWorkshop, onGoToCek }) {
                   Klik untuk Memilih File atau Seret & Lepas ke Sini
                 </p>
                 <p className="text-xs text-slate-500 mt-1">
-                  Mendukung format <strong>JPG, PNG, PDF, atau DOCX</strong> (Maks. 15MB)
+                  Mendukung <strong>semua jenis format file</strong> (Foto/Gambar dikompres otomatis, berkas dokumen maks. 800 KB)
                 </p>
               </div>
 
               <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-white text-purple-700 text-xs font-bold border border-purple-200 shadow-2xs">
                 <Sparkles size={12} />
-                Pilih Berkas Bukti
+                Pilih Berkas Bukti (File Bebas)
               </span>
             </div>
           ) : (
@@ -1662,28 +1670,73 @@ function AttendanceForm({ workshops, selectedWorkshop, onGoToCek }) {
 }
 
 // ========================
+// Helper Rotasi 5 Sertifikat Acak Setiap 5 Menit
+// ========================
+function getRotated5Records(records, seed) {
+  if (!records || records.length <= 5) return records || [];
+  const certOnly = records.filter(r => r.has_certificate !== false);
+  const pool = certOnly.length >= 5 ? certOnly : records;
+  const arr = [...pool];
+  let s = Math.abs(seed);
+  for (let i = arr.length - 1; i > 0; i--) {
+    s = (s * 9301 + 49297) % 233280;
+    const rnd = (s % 10000) / 10000;
+    const j = Math.floor(rnd * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr.slice(0, 5);
+}
+
+// ========================
 // Certificate Search
 // ========================
 function CertSearch({ initialQuery = '' }) {
   const [query, setQuery] = useState(initialQuery);
+  const [allRecords, setAllRecords] = useState([]);
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [previewRecord, setPreviewRecord] = useState(null);
   const [downloadingId, setDownloadingId] = useState(null);
+  const [timeBucket, setTimeBucket] = useState(() => Math.floor(Date.now() / (5 * 60 * 1000)));
 
   const search = async (q = query) => {
     setLoading(true);
     try {
-      const data = await getAttendance(q);
-      setResults(data);
-    } catch { setResults([]); }
-    finally { setLoading(false); }
+      if (!q || !q.trim()) {
+        const data = await getAttendance('');
+        setAllRecords(data);
+        setResults(getRotated5Records(data, timeBucket));
+      } else {
+        const data = await getAttendance(q);
+        setResults(data);
+      }
+    } catch {
+      setResults([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
     setQuery(initialQuery);
     search(initialQuery);
   }, [initialQuery]);
+
+  // Rotasi otomatis setiap 5 menit jika form pencarian sedang kosong
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const currentBucket = Math.floor(Date.now() / (5 * 60 * 1000));
+      setTimeBucket(prev => (prev !== currentBucket ? currentBucket : prev));
+    }, 15000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Update 5 item acak saat timeBucket berganti (hanya jika kolom pencarian kosong)
+  useEffect(() => {
+    if ((!query || !query.trim()) && allRecords.length > 0) {
+      setResults(getRotated5Records(allRecords, timeBucket));
+    }
+  }, [timeBucket, allRecords, query]);
 
   const handleDownload = async (rec) => {
     setDownloadingId(rec.id);
@@ -1708,7 +1761,13 @@ function CertSearch({ initialQuery = '' }) {
           <input
             type="text"
             value={query}
-            onChange={e => setQuery(e.target.value)}
+            onChange={e => {
+              const val = e.target.value;
+              setQuery(val);
+              if (!val.trim() && allRecords.length > 0) {
+                setResults(getRotated5Records(allRecords, timeBucket));
+              }
+            }}
             onKeyDown={e => e.key === 'Enter' && search(query)}
             placeholder="Cari nama, NIM, institusi..."
             className="w-full pl-10 sm:pl-11 pr-3 sm:pr-4 py-3 sm:py-3.5 rounded-2xl border-2 border-purple-200/80 bg-white text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 font-semibold focus:border-purple-600 focus:ring-4 focus:ring-purple-500/10 focus:outline-none transition-all shadow-xs"

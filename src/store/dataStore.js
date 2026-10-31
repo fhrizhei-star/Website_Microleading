@@ -205,20 +205,38 @@ async function syncFirestoreSeeds() {
   if (isSeeding || !isFirebaseConfigured || !db) return;
   isSeeding = true;
   try {
-    const wsSnap = await getDocs(collection(db, 'workshops'));
-    if (wsSnap.empty) {
-      console.log('🌱 [Firebase] Seeding data awal workshops...');
-      for (const w of DEFAULT_WORKSHOPS) {
-        await addDoc(collection(db, 'workshops'), { ...w, created_at: new Date().toISOString() });
+    // Cek flag status seed permanen agar tidak pernah membuat duplikat
+    const seedDoc = await getDoc(doc(db, 'settings', 'seeds_status')).catch(() => null);
+    const seedData = (seedDoc && seedDoc.exists()) ? seedDoc.data() : {};
+
+    // 1. Seeding workshops (hanya jika benar-benar belum pernah di-seed sama sekali)
+    if (!seedData.workshops_seeded) {
+      const wsSnap = await getDocs(collection(db, 'workshops'));
+      if (wsSnap.empty) {
+        console.log('🌱 [Firebase] Seeding data awal workshops dengan ID kanonikal...');
+        for (const w of DEFAULT_WORKSHOPS) {
+          const { id, ...wData } = w;
+          await setDoc(doc(db, 'workshops', id), { ...wData, created_at: new Date().toISOString() });
+        }
       }
+      await setDoc(doc(db, 'settings', 'seeds_status'), {
+        workshops_seeded: true,
+        seeded_at: new Date().toISOString()
+      }, { merge: true }).catch(() => {});
     }
 
-    const newsSnap = await getDocs(collection(db, 'news'));
-    if (newsSnap.empty) {
-      console.log('🌱 [Firebase] Seeding data awal news...');
-      for (const n of DEFAULT_NEWS) {
-        await addDoc(collection(db, 'news'), n);
+    // 2. Seeding news (hanya jika belum pernah di-seed)
+    if (!seedData.news_seeded) {
+      const newsSnap = await getDocs(collection(db, 'news'));
+      if (newsSnap.empty) {
+        console.log('🌱 [Firebase] Seeding data awal news...');
+        for (const n of DEFAULT_NEWS) {
+          await addDoc(collection(db, 'news'), n);
+        }
       }
+      await setDoc(doc(db, 'settings', 'seeds_status'), {
+        news_seeded: true,
+      }, { merge: true }).catch(() => {});
     }
 
     const galSnap = await getDocs(collection(db, 'gallery'));
@@ -261,7 +279,11 @@ async function syncFirestoreSeeds() {
 
 // Initialize all stores
 export function initializeStore() {
-  initStorage("mpi_workshops", DEFAULT_WORKSHOPS);
+  const isInitialized = localStorage.getItem("mpi_seeds_initialized");
+  if (!isInitialized) {
+    initStorage("mpi_workshops", DEFAULT_WORKSHOPS);
+    localStorage.setItem("mpi_seeds_initialized", "true");
+  }
   initStorage("mpi_attendance", DEFAULT_ATTENDANCE);
   initStorage("mpi_registrations", DEFAULT_REGISTRATIONS);
   initStorage("mpi_news", DEFAULT_NEWS);
@@ -377,18 +399,27 @@ export async function getAllWorkshops() {
     try {
       const snap = await getDocs(collection(db, 'workshops'));
       if (!snap.empty) {
-        const list = snap.docs.map(d => {
+        const seen = new Set();
+        const list = [];
+        snap.docs.forEach(d => {
           const data = d.data();
           const scheduleType = data.schedule_type || (data.date && data.date.includes('-') && data.date.length === 10 ? 'single' : 'recurring');
           const attMode = data.attendance_mode || (data.is_attendance_open === true ? 'open' : data.is_attendance_open === false ? 'closed' : 'auto');
-          return {
-            id: d.id,
+          const item = {
             ...data,
+            id: d.id, // PASTIKAN ID dokumen Firestore selalu menjadi ID utama (tidak ditimpa data.id)
             schedule_type: scheduleType,
             attendance_mode: attMode,
             has_certificate: data.has_certificate !== false,
             require_registration: data.require_registration !== false,
           };
+          const normTitle = (item.title || '').trim().toLowerCase();
+          const dedupKey = `${normTitle}__${item.date}`;
+          if (!seen.has(item.id) && !seen.has(dedupKey)) {
+            seen.add(item.id);
+            seen.add(dedupKey);
+            list.push(item);
+          }
         });
         setStore("mpi_workshops", list);
         return list;
@@ -399,10 +430,12 @@ export async function getAllWorkshops() {
   }
   await delay();
   const rawList = getStore("mpi_workshops") || [];
-  const list = rawList.map((w, idx) => {
+  const seenLocal = new Set();
+  const list = [];
+  rawList.forEach((w, idx) => {
     const scheduleType = w.schedule_type || (w.date && w.date.includes('-') && w.date.length === 10 ? 'single' : 'recurring');
     const attMode = w.attendance_mode || (w.is_attendance_open === true ? 'open' : w.is_attendance_open === false ? 'closed' : 'auto');
-    return {
+    const item = {
       ...w,
       id: w.id || `ws_${idx + 1}`,
       schedule_type: scheduleType,
@@ -410,6 +443,13 @@ export async function getAllWorkshops() {
       has_certificate: w.has_certificate !== false,
       require_registration: w.require_registration !== false,
     };
+    const normTitle = (item.title || '').trim().toLowerCase();
+    const dedupKey = `${normTitle}__${item.date}`;
+    if (!seenLocal.has(item.id) && !seenLocal.has(dedupKey)) {
+      seenLocal.add(item.id);
+      seenLocal.add(dedupKey);
+      list.push(item);
+    }
   });
   return list;
 }
@@ -693,7 +733,7 @@ export async function createWorkshop(data) {
       const docRef = await addDoc(collection(db, 'workshops'), newWData);
       const created = { ...newWData, id: docRef.id };
       const workshops = getStore("mpi_workshops");
-      setStore("mpi_workshops", [...workshops, created]);
+      setStore("mpi_workshops", [...workshops.filter(w => w.id !== created.id), created]);
       return created;
     } catch (err) {
       console.warn('⚠️ [Firestore] createWorkshop error:', err.message);
@@ -702,7 +742,7 @@ export async function createWorkshop(data) {
   await delay();
   const workshops = getStore("mpi_workshops");
   const newW = { ...newWData, id: `ws_${Date.now()}` };
-  setStore("mpi_workshops", [...workshops, newW]);
+  setStore("mpi_workshops", [...workshops.filter(w => w.id !== newW.id), newW]);
   return newW;
 }
 

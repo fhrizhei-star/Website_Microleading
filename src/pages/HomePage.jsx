@@ -58,6 +58,16 @@ export default function HomePage() {
       }
     }
     loadData();
+
+    const handleWsUpdate = (e) => {
+      if (e?.detail && Array.isArray(e.detail)) {
+        setWorkshops(e.detail);
+      } else {
+        getAllWorkshops().then(data => { if (data) setWorkshops(data); });
+      }
+    };
+    window.addEventListener('mpi_workshops_updated', handleWsUpdate);
+    return () => window.removeEventListener('mpi_workshops_updated', handleWsUpdate);
   }, []);
 
   return (
@@ -129,16 +139,24 @@ export default function HomePage() {
                     >
                       <div>
                         <div className="flex items-center justify-between gap-2 mb-4">
-                          <span
-                            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold border ${
-                              isOpen
-                                ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
-                                : 'bg-slate-100 text-slate-600 border-slate-200'
-                            }`}
-                          >
-                            <span className={`w-2 h-2 rounded-full ${isOpen ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`} />
-                            {isOpen ? '● Pendaftaran Dibuka' : '○ Pendaftaran Ditutup'}
-                          </span>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span
+                              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold border ${
+                                isOpen
+                                  ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
+                                  : 'bg-slate-100 text-slate-600 border-slate-200'
+                              }`}
+                            >
+                              <span className={`w-2 h-2 rounded-full ${isOpen ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`} />
+                              {isOpen ? '● Pendaftaran Dibuka' : '○ Pendaftaran Ditutup'}
+                            </span>
+                            {w.is_featured && (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-amber-100 text-amber-900 border border-amber-300 shadow-2xs">
+                                <Star size={10} className="text-amber-600 fill-amber-500" />
+                                Sorotan
+                              </span>
+                            )}
+                          </div>
                           <span className="text-[11px] font-semibold text-purple-700 bg-purple-50 border border-purple-100 px-2.5 py-0.5 rounded-full">
                             E-Sertifikat
                           </span>

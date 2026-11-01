@@ -318,7 +318,7 @@ export default function LayananPage() {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl border border-purple-200 relative overflow-hidden"
+              className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full max-w-[calc(100vw-1.5rem)] max-h-[92vh] overflow-y-auto shadow-2xl border border-purple-200 relative mx-auto"
             >
               <button
                 onClick={() => setSelectedService(null)}

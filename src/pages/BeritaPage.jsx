@@ -213,7 +213,7 @@ export default function BeritaPage() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.92, y: 20 }}
               transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-              className="relative bg-white rounded-3xl max-w-2xl w-full max-h-[92vh] overflow-y-auto shadow-2xl border border-purple-200 z-10 no-scrollbar my-auto"
+              className="relative bg-white rounded-3xl max-w-2xl w-full max-w-[calc(100vw-1.5rem)] max-h-[92vh] overflow-y-auto shadow-2xl border border-purple-200 z-10 no-scrollbar my-auto mx-auto"
             >
               <button
                 onClick={() => setSelectedNews(null)}

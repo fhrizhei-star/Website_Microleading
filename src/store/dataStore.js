@@ -412,6 +412,7 @@ export async function getAllWorkshops() {
             attendance_mode: attMode,
             has_certificate: data.has_certificate !== false,
             require_registration: data.require_registration !== false,
+            is_featured: Boolean(data.is_featured),
           };
           const normTitle = (item.title || '').trim().toLowerCase();
           const dedupKey = `${normTitle}__${item.date}`;
@@ -442,6 +443,7 @@ export async function getAllWorkshops() {
       attendance_mode: attMode,
       has_certificate: w.has_certificate !== false,
       require_registration: w.require_registration !== false,
+      is_featured: Boolean(w.is_featured),
     };
     const normTitle = (item.title || '').trim().toLowerCase();
     const dedupKey = `${normTitle}__${item.date}`;
@@ -726,6 +728,7 @@ export async function createWorkshop(data) {
     attendance_pin: data.attendance_pin ? String(data.attendance_pin).trim() : "",
     has_certificate: data.has_certificate !== false,
     require_registration: data.require_registration !== false,
+    is_featured: Boolean(data.is_featured),
     created_at: new Date().toISOString()
   };
   if (isFirebaseConfigured && db) {
@@ -756,9 +759,46 @@ export async function updateWorkshop(id, data) {
     }
   }
   await delay();
-  const workshops = getStore("mpi_workshops").map(w => String(w.id) === String(id) ? { ...w, ...data } : w);
+  const workshops = getStore("mpi_workshops").map(w => {
+    if (String(w.id) === String(id)) return { ...w, ...data };
+    if (data.is_featured === true) return { ...w, is_featured: false };
+    return w;
+  });
   setStore("mpi_workshops", workshops);
+  window.dispatchEvent(new CustomEvent("mpi_workshops_updated", { detail: workshops }));
   return workshops.find(w => String(w.id) === String(id));
+}
+
+export async function setFeaturedWorkshop(id, explicitState) {
+  const currentList = await getAllWorkshops();
+  const target = currentList.find(w => String(w.id) === String(id));
+  const newFeaturedState = explicitState !== undefined ? Boolean(explicitState) : !target?.is_featured;
+
+  if (isFirebaseConfigured && db) {
+    try {
+      for (const w of currentList) {
+        const isTarget = String(w.id) === String(id);
+        const shouldBe = isTarget ? newFeaturedState : (newFeaturedState ? false : Boolean(w.is_featured));
+        if (Boolean(w.is_featured) !== shouldBe) {
+          const docRef = doc(db, 'workshops', String(w.id));
+          await updateDoc(docRef, { is_featured: shouldBe }).catch(() => {});
+        }
+      }
+    } catch (err) {
+      console.warn('⚠️ [Firestore] setFeaturedWorkshop error:', err.message);
+    }
+  }
+
+  const updated = (getStore('mpi_workshops') || currentList).map(w => {
+    const isTarget = String(w.id) === String(id);
+    return {
+      ...w,
+      is_featured: isTarget ? newFeaturedState : (newFeaturedState ? false : Boolean(w.is_featured))
+    };
+  });
+  setStore('mpi_workshops', updated);
+  window.dispatchEvent(new CustomEvent('mpi_workshops_updated', { detail: updated }));
+  return updated;
 }
 
 export async function deleteWorkshop(id) {
@@ -1025,19 +1065,20 @@ export async function submitRegistration(data) {
   const workshop = workshops.find(w => String(w.id) === String(data.workshop_id));
 
   // Anti-duplikasi check: satu NIM hanya bisa mendaftar 1 kali per workshop
-  const cleanNim = (data.nim_nip || '').trim().toLowerCase();
+  const cleanNim = (data.nim_nip || "").trim().toLowerCase();
   const alreadyRegistered = existingList.find(
     r => String(r.workshop_id) === String(data.workshop_id) &&
-         (r.nim_nip || '').trim().toLowerCase() === cleanNim
+         (r.nim_nip || "").trim().toLowerCase() === cleanNim
   );
 
   if (alreadyRegistered) {
-    const err = new Error(`NIM/Identitas "${data.nim_nip}" sudah terdaftar pada kegiatan "${workshop?.title || 'Workshop ini'}" dengan Kode Registrasi: ${alreadyRegistered.reg_code}.`);
+    const err = new Error(`NIM/Identitas "${data.nim_nip}" sudah terdaftar pada kegiatan "${workshop?.title || "Workshop ini"}" dengan Kode Registrasi: ${alreadyRegistered.reg_code}.`);
     err.alreadyRegistered = alreadyRegistered;
     throw err;
   }
 
   const regCode = `REG-MPI-${new Date().getFullYear()}-${String(existingList.length + 1).padStart(4, "0")}`;
+
   const newRegistration = {
     reg_code: regCode,
     workshop_id: data.workshop_id,
@@ -1059,12 +1100,12 @@ export async function submitRegistration(data) {
 
   if (isFirebaseConfigured && db) {
     try {
-      const docRef = await addDoc(collection(db, 'registrations'), newRegistration);
+      const docRef = await addDoc(collection(db, "registrations"), newRegistration);
       const created = { ...newRegistration, id: docRef.id };
       setStore("mpi_registrations", [created, ...existingList]);
       return created;
     } catch (err) {
-      console.warn('⚠️ [Firestore] submitRegistration error, using local fallback:', err.message);
+      console.warn("⚠️ [Firestore] submitRegistration error, using local fallback:", err.message);
     }
   }
 

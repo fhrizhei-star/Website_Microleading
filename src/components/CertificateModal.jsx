@@ -79,14 +79,14 @@ export default function CertificateModal({ record, onClose }) {
 
         {/* Modal Window */}
         <motion.div
-          className="relative z-10 w-full max-w-3xl max-h-[92vh] overflow-y-auto glass-panel rounded-3xl border border-purple-200/90 shadow-2xl flex flex-col"
+          className="relative z-10 w-full max-w-3xl max-w-[calc(100vw-1.5rem)] max-h-[92vh] overflow-y-auto glass-panel rounded-3xl border border-purple-200/90 shadow-2xl flex flex-col mx-auto overflow-hidden"
           initial={{ opacity: 0, scale: 0.94, y: 18 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.96, y: 12 }}
           transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
         >
           {/* Header Bar */}
-          <div className="flex items-center justify-between p-5 sm:p-6 border-b border-purple-100 gap-4 bg-white/80">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 sm:p-6 border-b border-purple-100 gap-3 bg-white/80">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-purple-600 to-indigo-600 text-white flex items-center justify-center shadow-lg shadow-purple-600/30 shrink-0">
                 <GoogleDriveIcon size={20} />
@@ -189,7 +189,7 @@ export default function CertificateModal({ record, onClose }) {
 
           {/* Bottom Info Badges */}
           <div className="px-5 sm:px-6 pb-6 pt-1">
-            <div className="glass-card rounded-2xl p-4 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs border border-purple-100">
+            <div className="glass-card rounded-2xl p-3 sm:p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5 text-xs border border-purple-100 overflow-hidden">
               <div className="flex items-start gap-2">
                 <Hash size={14} className="text-purple-600 mt-0.5 shrink-0" />
                 <div className="min-w-0">

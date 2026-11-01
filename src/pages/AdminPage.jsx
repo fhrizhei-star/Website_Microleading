@@ -1,17 +1,77 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  LayoutDashboard, Users, Newspaper, Images, Award,
-  LogOut, Menu, X, Plus, Trash2, Edit3, Check, XCircle,
-  Calendar, Upload, Sliders, HardDrive, ExternalLink, Save,
-  FileText, CheckCircle2, Copy, Eye, RefreshCw, Sparkles,
-  FolderOpen, Zap, Clock, MapPin, Download, Filter, Search,
-  CheckCircle, ArrowRight, Wand2, MousePointer, Share2,
-  UserPlus, GraduationCap, TrendingUp, Activity, Star,
-  Bell, BarChart2, PieChart, ChevronLeft, ChevronRight,
-  BookOpen, Shield, Layers, Target, Cpu, Globe, KeyRound, Lock,
-  ClipboardCheck, Unlock, Key, Dices, ShieldCheck,
-  CalendarDays, CalendarClock, Repeat, Timer, Radio, Flame, Ticket, Medal, ShieldAlert, BadgeCheck, ShieldOff
+  LayoutDashboard,
+  Users,
+  Newspaper,
+  Images,
+  Award,
+  LogOut,
+  Menu,
+  X,
+  Plus,
+  Trash2,
+  Edit3,
+  Check,
+  XCircle,
+  Calendar,
+  Upload,
+  Sliders,
+  HardDrive,
+  ExternalLink,
+  Save,
+  FileText,
+  CheckCircle2,
+  Copy,
+  Eye,
+  RefreshCw,
+  Sparkles,
+  FolderOpen,
+  Zap,
+  Clock,
+  MapPin,
+  Download,
+  Filter,
+  Search,
+  CheckCircle,
+  ArrowRight,
+  Wand2,
+  MousePointer,
+  Share2,
+  UserPlus,
+  GraduationCap,
+  TrendingUp,
+  Activity,
+  Star,
+  Bell,
+  BarChart2,
+  PieChart,
+  ChevronLeft,
+  ChevronRight,
+  BookOpen,
+  Shield,
+  Layers,
+  Target,
+  Cpu,
+  Globe,
+  KeyRound,
+  Lock,
+  ClipboardCheck,
+  Unlock,
+  Key,
+  Dices,
+  ShieldCheck,
+  CalendarDays,
+  CalendarClock,
+  Repeat,
+  Timer,
+  Radio,
+  Flame,
+  Ticket,
+  Medal,
+  ShieldAlert,
+  BadgeCheck,
+  ShieldOff
 } from 'lucide-react';
 import {
   getAllWorkshops, getAttendance, getNews, getGallery, getMembers,
@@ -21,7 +81,7 @@ import {
   deleteAttendance, updateAttendanceDriveUrl, getCertSettings, updateCertSettings,
   getCurrentUser, clearCurrentUser, getFirebaseStatus, changeAdminPassword,
   getRegistrations, deleteRegistration, updateRegistrationStatus,
-  getWorkshopAttendanceStatus, setWorkshopAttendanceMode
+  getWorkshopAttendanceStatus, setWorkshopAttendanceMode, setFeaturedWorkshop
 } from '../store/dataStore';
 import { exportStyledExcel, exportSingleRegistrationExcel } from '../utils/excelExport';
 import { useNavigate } from 'react-router-dom';
@@ -351,64 +411,18 @@ function CertificateStudioPanel() {
   const [testWebhookNotice, setTestWebhookNotice] = useState(null);
 
   const copyGoogleAppsScript = () => {
-    const scriptCode = `// Google Apps Script: Auto-Upload & Single-File Preview Lab MPI ke Google Drive
-function doPost(e) {
-  try {
-    var contents = e.postData ? e.postData.contents : "";
-    var data = JSON.parse(contents);
-    var folderId = data.folderId || "${detectedFolderId || ''}";
-    var folder;
-    
-    // Cari folder tujuan di Google Drive (fallback ke folder utama jika ID belum disetel)
-    if (folderId && folderId !== "MASUKKAN_FOLDER_ID_ANDA") {
-      try {
-        folder = DriveApp.getFolderById(folderId);
-      } catch (fErr) {
-        folder = DriveApp.getRootFolder();
-      }
-    } else {
-      folder = DriveApp.getRootFolder();
-    }
-    
-    var decoded = Utilities.base64Decode(data.base64);
-    var namaClean = (data.nama || "Peserta").replace(/[\\/:*?"<>|]/g, "").trim();
+    const scriptCode = `// Google Apps Script: Otomasi Upload E-Sertifikat Lab Microleading MPI ke Google Drive
 
-    // 1. Simpan format Gambar (.JPG) - Tampil instan di Google Drive tanpa jeda preview
-    var imgBlob = Utilities.newBlob(decoded, "image/jpeg", "Sertifikat - " + namaClean + ".jpg");
-    var fileImg = folder.createFile(imgBlob);
-    fileImg.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-
-    // 2. Simpan juga Dokumen PDF Resmi (.PDF Asli yang Valid)
-    try {
-      var html = '<!DOCTYPE html><html><head><style>@page{size:landscape;margin:0;}body{margin:0;padding:0;display:flex;align-items:center;justify-content:center;}img{width:100vw;height:100vh;object-fit:contain;}</style></head><body><img src="data:image/jpeg;base64,' + data.base64 + '"></body></html>';
-      var pdfBlob = Utilities.newBlob(html, "text/html", "cert.html").getAs("application/pdf").setName("Sertifikat - " + namaClean + ".pdf");
-      var filePdf = folder.createFile(pdfBlob);
-      filePdf.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-    } catch (pdfErr) {}
-    
-    return ContentService.createTextOutput(JSON.stringify({
-      status: "success",
-      url: fileImg.getUrl(),
-      fileId: fileImg.getId()
-    })).setMimeType(ContentService.MimeType.JSON);
-  } catch (err) {
-    return ContentService.createTextOutput(JSON.stringify({
-      status: "error",
-      message: err.toString()
-    })).setMimeType(ContentService.MimeType.JSON);
-  }
-}
-
-// Buka Preview Google Drive Terisolasi Khusus File Nama Peserta (Tanpa Akses File Lain)
 function doGet(e) {
-  var nama = (e.parameter.nama || e.parameter.name || "").trim();
-  var folderId = e.parameter.folderId || "${detectedFolderId || ''}";
+  e = e || { parameter: {} };
+  var params = e.parameter || {};
+  var nama = (params.nama || params.name || "").trim();
+  var folderId = params.folderId || "${detectedFolderId || ''}";
   var namaClean = nama.replace(/[\\/:*?"<>|]/g, "").trim();
 
   if (namaClean && folderId) {
     try {
       var folder = DriveApp.getFolderById(folderId);
-      // Cari file sertifikat spesifik milik nama peserta ini
       var files = folder.searchFiles("title contains '" + namaClean + "' and mimeType = 'image/jpeg' and trashed = false");
       if (!files.hasNext()) {
         files = folder.searchFiles("title contains '" + namaClean + "' and trashed = false");
@@ -419,7 +433,7 @@ function doGet(e) {
         return HtmlService.createHtmlOutput(
           '<!DOCTYPE html><html><head>' +
           '<meta http-equiv="refresh" content="0;url=' + fileViewUrl + '">' +
-          '<script>window.location.replace("' + fileViewUrl + '");</script>' +
+          '<script>window.location.replace("' + fileViewUrl + '");<\\/script>' +
           '</head><body style="background:#111;color:#fff;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;">' +
           '<p>Membuka Preview Sertifikat Resmi Google Drive: ' + file.getName() + '...</p>' +
           '</body></html>'
@@ -428,14 +442,64 @@ function doGet(e) {
     } catch (err) {}
   }
 
-  // Jika belum ditemukan, arahkan ke pencarian Google Drive terfilter nama peserta saja
-  var filterUrl = "https://drive.google.com/drive/folders/" + folderId + "?q=name%20contains%20%27" + encodeURIComponent(namaClean) + "%27";
   return HtmlService.createHtmlOutput(
-    '<!DOCTYPE html><html><head>' +
-    '<meta http-equiv="refresh" content="0;url=' + filterUrl + '">' +
-    '<script>window.location.replace("' + filterUrl + '");</script>' +
-    '</head><body></body></html>'
+    '<!DOCTYPE html><html><body style="font-family:sans-serif;text-align:center;padding:40px;color:#1e293b;background:#f8fafc;">' +
+    '<h2 style="color:#4f46e5;">✅ Webhook Sertifikat Google Drive Aktif</h2>' +
+    '<p style="color:#64748b;">Layanan Webhook Google Apps Script terhubung dan siap mengunggah e-sertifikat peserta ke Google Drive.</p>' +
+    '</body></html>'
   );
+}
+
+function doPost(e) {
+  e = e || {};
+  var raw = (e.postData && e.postData.contents) ? e.postData.contents : "";
+  var data = {};
+  if (raw) {
+    try { data = JSON.parse(raw); } catch (err) { data = {}; }
+  }
+  if (!data.base64 && e.parameter) {
+    data = e.parameter;
+  }
+
+  if (data.base64) {
+    try {
+      var folderId = data.folderId || "${detectedFolderId || ''}";
+      var folder;
+      if (folderId && folderId !== "MASUKKAN_FOLDER_ID_ANDA") {
+        try { folder = DriveApp.getFolderById(folderId); } catch (fErr) { folder = DriveApp.getRootFolder(); }
+      } else {
+        folder = DriveApp.getRootFolder();
+      }
+
+      var decoded = Utilities.base64Decode(data.base64);
+      var namaClean = (data.nama || "Peserta").replace(/[\\/:*?"<>|]/g, "").trim();
+
+      var imgBlob = Utilities.newBlob(decoded, "image/jpeg", "Sertifikat - " + namaClean + ".jpg");
+      var fileImg = folder.createFile(imgBlob);
+      fileImg.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+
+      try {
+        var html = '<!DOCTYPE html><html><head><style>@page{size:landscape;margin:0;}body{margin:0;padding:0;display:flex;align-items:center;justify-content:center;}img{width:100vw;height:100vh;object-fit:contain;}</style></head><body><img src="data:image/jpeg;base64,' + data.base64 + '"></body></html>';
+        var pdfBlob = Utilities.newBlob(html, "text/html", "cert.html").getAs("application/pdf").setName("Sertifikat - " + namaClean + ".pdf");
+        var filePdf = folder.createFile(pdfBlob);
+        filePdf.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+      } catch (pdfErr) {}
+
+      return ContentService.createTextOutput(JSON.stringify({
+        status: "success",
+        url: fileImg.getUrl(),
+        fileId: fileImg.getId()
+      })).setMimeType(ContentService.MimeType.JSON);
+    } catch (dErr) {
+      return ContentService.createTextOutput(JSON.stringify({
+        status: "error",
+        message: dErr.toString()
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+  }
+
+  return ContentService.createTextOutput(JSON.stringify({ status: "received" }))
+    .setMimeType(ContentService.MimeType.JSON);
 }`;
     navigator.clipboard?.writeText(scriptCode);
     setCopiedScript(true);
@@ -841,11 +905,12 @@ function doGet(e) {
             {/* Input Webhook URL */}
             <div className="pt-2 border-t border-purple-100 space-y-1.5">
               <div className="flex items-center justify-between flex-wrap gap-1">
-                <label className="text-xs font-bold text-slate-700">
+                <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                  <Globe size={14} className="text-purple-600" />
                   Link Webhook Google Apps Script (Untuk Terbit Otomatis ke Drive)
                 </label>
                 <span className="text-[10px] text-purple-700 bg-purple-50 font-bold px-2 py-0.5 rounded border border-purple-200">
-                  Tempelkan Webhook Di Sini
+                  Pusat Integrasi Webhook
                 </span>
               </div>
               <input
@@ -856,21 +921,24 @@ function doGet(e) {
                 className="w-full px-3.5 py-2.5 rounded-xl border border-purple-200 text-xs bg-white font-mono min-w-0 focus:border-purple-600 focus:outline-none"
               />
               <p className="text-[11px] text-slate-500 leading-relaxed">
-                👉 <strong>Salin Webhook URL Anda lalu tempelkan pada kolom ini</strong>. Begitu tersimpan, setiap ada mahasiswa yang mengisi absensi, sertifikat mereka akan langsung otomatis dibuat dan tersimpan ke Google Drive Anda!
+                👉 <strong>Salin Webhook URL Google Apps Script Anda lalu tempelkan pada kolom ini</strong>. Webhook ini akan otomatis menyimpan file gambar sertifikat (JPEG) dan dokumen PDF resmi peserta ke folder Google Drive saat peserta melakukan presensi kehadiran.
               </p>
 
-              {/* Test Button & Result */}
+              {/* Test Interactive Email & Drive Box */}
               {settings.drive_webhook_url && (
-                <div className="pt-1.5 space-y-2">
-                  <button
-                    type="button"
-                    onClick={handleTestWebhook}
-                    disabled={testingWebhook}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-100 hover:bg-purple-200 text-purple-900 text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
-                  >
-                    {testingWebhook ? <RefreshCw size={13} className="animate-spin" /> : <HardDrive size={13} />}
-                    <span>{testingWebhook ? 'Mengirim Uji Coba ke Drive...' : '🧪 Uji Kirim 1 Sertifikat ke Google Drive Sekarang'}</span>
-                  </button>
+                <div className="pt-2 space-y-3">
+                  {/* Drive Upload Tester */}
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleTestWebhook}
+                      disabled={testingWebhook}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-purple-100 hover:bg-purple-200 text-purple-900 text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
+                    >
+                      {testingWebhook ? <RefreshCw size={13} className="animate-spin" /> : <HardDrive size={13} />}
+                      <span>{testingWebhook ? 'Mengirim ke Drive...' : '📁 Uji Kirim 1 Sertifikat ke Google Drive'}</span>
+                    </button>
+                  </div>
 
                   {testWebhookNotice && (
                     <div className={`p-3 rounded-xl text-xs font-semibold leading-relaxed ${testWebhookNotice.type === 'success'
@@ -987,7 +1055,7 @@ function doGet(e) {
               ref={canvasRef}
               onClick={handleCanvasClick}
               title="Klik di sini untuk langsung memindahkan posisi nama!"
-              className="relative rounded-2xl overflow-hidden shadow-xl border-2 border-purple-300 bg-slate-900 select-none cursor-crosshair group mx-auto"
+              className="relative rounded-2xl overflow-hidden shadow-xl border-2 border-purple-300 bg-slate-900 select-none cursor-crosshair group mx-auto w-full max-w-full"
               style={{
                 maxWidth: settings.orientation === 'portrait' ? '420px' : '100%',
               }}
@@ -1072,6 +1140,7 @@ function WorkshopPanel() {
     attendance_pin: '',
     has_certificate: true,
     require_registration: true,
+    is_featured: false,
   });
 
   // Parse string jam menjadi jam mulai, jam selesai, dan zona waktu
@@ -1152,6 +1221,7 @@ function WorkshopPanel() {
       attendance_pin: ws.attendance_pin || '',
       has_certificate: ws.has_certificate !== false,
       require_registration: ws.require_registration !== false,
+      is_featured: Boolean(ws.is_featured),
     });
     setShowForm(true);
     window.scrollTo({ top: 100, behavior: 'smooth' });
@@ -1179,6 +1249,7 @@ function WorkshopPanel() {
       attendance_pin: '',
       has_certificate: true,
       require_registration: true,
+      is_featured: false,
     });
   };
 
@@ -1206,6 +1277,7 @@ function WorkshopPanel() {
       attendance_pin: '',
       has_certificate: ws.has_certificate !== false,
       require_registration: ws.require_registration !== false,
+      is_featured: false,
     });
     setShowForm(true);
     window.scrollTo({ top: 100, behavior: 'smooth' });
@@ -1224,14 +1296,34 @@ function WorkshopPanel() {
     e.preventDefault();
     if (editingWorkshopId) {
       await updateWorkshop(editingWorkshopId, form);
+      if (form.is_featured) {
+        await setFeaturedWorkshop(editingWorkshopId, true);
+      }
       playSuccess();
       showToast('Perubahan workshop berhasil disimpan!', 'success');
     } else {
-      await createWorkshop(form);
+      const created = await createWorkshop(form);
+      if (form.is_featured && created?.id) {
+        await setFeaturedWorkshop(created.id, true);
+      }
       playSuccess();
       showToast('Workshop baru berhasil diterbitkan!', 'success');
     }
     handleCancelForm();
+    getAllWorkshops().then(setWorkshops);
+  };
+
+  // Toggle Sorot di Beranda (Pin to Hero)
+  const handleToggleFeatured = async (ws) => {
+    playClick();
+    const willBeFeatured = !ws.is_featured;
+    await setFeaturedWorkshop(ws.id);
+    if (willBeFeatured) {
+      playSuccess();
+      showToast(`⭐ "${ws.title}" kini DISOROT di Kartu Beranda Utama!`, 'success');
+    } else {
+      showToast(`Sorotan Beranda dinonaktifkan untuk "${ws.title}".`, 'info');
+    }
     getAllWorkshops().then(setWorkshops);
   };
 
@@ -1305,7 +1397,7 @@ function WorkshopPanel() {
       <AnimatePresence>
         {showForm && (
           <motion.div
-            className="glass-panel rounded-3xl p-5 sm:p-7 border border-purple-200/90 shadow-xl"
+            className="glass-panel rounded-3xl p-4 sm:p-7 border border-purple-200/90 shadow-xl overflow-hidden"
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
@@ -1368,10 +1460,11 @@ function WorkshopPanel() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div
                     onClick={() => {
-                      set('schedule_type', 'single');
-                      if (!form.date || form.date.length !== 10 || !form.date.includes('-')) {
-                        set('date', getTodayDate());
-                      }
+                      setForm(f => ({
+                        ...f,
+                        schedule_type: 'single',
+                        date: (!f.date || f.date.length !== 10 || !f.date.includes('-')) ? getTodayDate() : f.date,
+                      }));
                     }}
                     className={`p-3.5 rounded-2xl border-2 flex items-start gap-3 cursor-pointer transition-all ${
                       form.schedule_type !== 'recurring'
@@ -1401,10 +1494,11 @@ function WorkshopPanel() {
 
                   <div
                     onClick={() => {
-                      set('schedule_type', 'recurring');
-                      if (!form.date || (form.date.length === 10 && form.date.includes('-'))) {
-                        set('date', 'Setiap Kamis (Mingguan)');
-                      }
+                      setForm(f => ({
+                        ...f,
+                        schedule_type: 'recurring',
+                        date: (!f.date || (f.date.length === 10 && f.date.includes('-'))) ? 'Setiap Kamis (Mingguan)' : f.date,
+                      }));
                     }}
                     className={`p-3.5 rounded-2xl border-2 flex items-start gap-3 cursor-pointer transition-all ${
                       form.schedule_type === 'recurring'
@@ -1690,6 +1784,8 @@ function WorkshopPanel() {
                     </label>
                   </div>
 
+                  
+
                   {/* PIN Presensi Hari-H */}
                   <div className="space-y-1">
                     <label className="text-xs font-bold text-slate-700 uppercase flex items-center justify-between">
@@ -1751,6 +1847,30 @@ function WorkshopPanel() {
                           {form.status === 'open'
                             ? 'Calon peserta dapat mendaftar dan mengambil nomor tiket registrasi online.'
                             : 'Formulir pendaftaran ditutup. Tidak menerima pendaftaran peserta baru.'}
+                        </p>
+                      </div>
+                    </label>
+                  </div>
+
+                  {/* Sorotan Kartu Beranda (Hero Home) */}
+                  <div className="space-y-1.5 p-3 rounded-xl bg-white border border-amber-200 shadow-2xs">
+                    <label className="text-xs font-bold text-amber-900 uppercase flex items-center gap-1.5">
+                      <Star size={13} className="text-amber-500 fill-amber-400" />
+                      Sorotan Kartu Beranda (Hero Home)
+                    </label>
+                    <label className="flex items-start gap-2.5 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={form.is_featured === true}
+                        onChange={e => set('is_featured', e.target.checked)}
+                        className="w-4 h-4 mt-0.5 rounded text-amber-500 focus:ring-amber-500 shrink-0"
+                      />
+                      <div>
+                        <span className="text-xs font-bold text-slate-900 block">
+                          {form.is_featured ? '⭐ Tampilkan Sebagai Sorotan Utama di Beranda' : '⚪ Ikuti Urutan Standar'}
+                        </span>
+                        <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
+                          Jika dicentang, workshop ini akan langsung dipajang di kartu depan (Hero Section) website beranda menggantikan workshop lainnya.
                         </p>
                       </div>
                     </label>
@@ -1894,9 +2014,16 @@ function WorkshopPanel() {
           const isAutoMode = !isManualOpen && !isManualClosed;
 
           return (
-            <div key={w.id} className="bento-card rounded-2xl p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div key={w.id} className="bento-card rounded-2xl p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-3 overflow-hidden">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-2 flex-wrap">
+                  {/* Sorotan Beranda Badge */}
+                  {w.is_featured && (
+                    <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold flex items-center gap-1.5 bg-gradient-to-r from-amber-50 to-yellow-50 text-amber-900 border border-amber-300 shadow-2xs ring-2 ring-amber-400/20">
+                      <Star size={11} className="text-amber-600 fill-amber-500" />
+                      ⭐ Sorotan Beranda
+                    </span>
+                  )}
                   {/* Model Jadwal Badge */}
                   {w.schedule_type === 'recurring' ? (
                     <span className="px-2.5 py-1 rounded-full text-[10px] font-bold flex items-center gap-1.5 bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-2xs">
@@ -1995,9 +2122,23 @@ function WorkshopPanel() {
                 </p>
               </div>
 
-              <div className="flex items-center gap-2 shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-purple-100 flex-wrap">
+              <div className="flex items-center gap-2 pt-2 md:pt-0 border-t md:border-t-0 border-purple-100 flex-wrap w-full md:w-auto justify-start md:justify-end">
+                {/* Quick Toggle Sorotan Beranda (Pin to Home) */}
+                <button
+                  type="button"
+                  onClick={() => handleToggleFeatured(w)}
+                  className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all inline-flex items-center gap-1.5 cursor-pointer ${
+                    w.is_featured
+                      ? 'bg-amber-100 text-amber-900 border border-amber-300 shadow-xs ring-2 ring-amber-400/30'
+                      : 'bg-white text-slate-600 hover:text-amber-800 hover:bg-amber-50 border border-slate-200'
+                  }`}
+                  title={w.is_featured ? 'Sedang disorot di Beranda utama (Klik untuk membatalkan)' : 'Jadikan workshop ini sebagai sorotan utama di kartu Beranda'}
+                >
+                  <Star size={13} className={w.is_featured ? 'text-amber-600 fill-amber-500' : 'text-slate-400'} />
+                  <span>{w.is_featured ? 'Disorot di Beranda' : 'Sorot di Beranda'}</span>
+                </button>
                 {/* 3-Way Hybrid Attendance Mode Switcher */}
-                <div className="inline-flex rounded-xl p-1 bg-slate-100/90 border border-slate-200/90 text-xs font-bold gap-1 shadow-2xs">
+                <div className="inline-flex max-w-full overflow-x-auto rounded-xl p-1 bg-slate-100/90 border border-slate-200/90 text-xs font-bold gap-1 shadow-2xs">
                   <button
                     type="button"
                     onClick={() => handleSetAttendanceMode(w, 'auto')}
@@ -2695,7 +2836,7 @@ function AttendancePanel() {
           <p className="text-center text-sm text-slate-400 py-8">Tidak ada data presensi yang sesuai kriteria.</p>
         )}
         {filteredRecords.map(rec => (
-          <div key={rec.id} className="bento-card rounded-2xl p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <div key={rec.id} className="bento-card rounded-2xl p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-3 overflow-hidden">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                 <span className="font-mono text-[10px] bg-purple-100 text-purple-800 px-2 py-0.5 rounded-md font-bold">
@@ -3043,7 +3184,7 @@ function NewsPanel() {
       <AnimatePresence>
         {showForm && (
           <motion.div
-            className="glass-panel rounded-3xl p-5 sm:p-7 border border-purple-200 mb-5 shadow-xl"
+            className="glass-panel rounded-3xl p-4 sm:p-7 border border-purple-200 mb-5 shadow-xl overflow-hidden"
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
@@ -4324,7 +4465,7 @@ function CalendarPanel({ workshops = [], onNavigate }) {
           <button onClick={prevMonth} className="p-2 rounded-xl border border-purple-200 hover:bg-purple-50 text-slate-700 cursor-pointer">
             <ChevronLeft size={16} />
           </button>
-          <div className="text-center px-4 py-1.5 rounded-xl bg-purple-50 border border-purple-200 font-display font-extrabold text-sm text-purple-900 min-w-[160px]">
+          <div className="text-center px-3 sm:px-4 py-1.5 rounded-xl bg-purple-50 border border-purple-200 font-display font-extrabold text-xs sm:text-sm text-purple-900 flex-1 sm:flex-initial min-w-0 sm:min-w-[140px]">
             {monthNames[month]} {year}
           </div>
           <button onClick={nextMonth} className="p-2 rounded-xl border border-purple-200 hover:bg-purple-50 text-slate-700 cursor-pointer">

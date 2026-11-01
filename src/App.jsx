@@ -32,7 +32,7 @@ function MainLayout() {
   const isAdminRoute = location.pathname.startsWith('/admin');
 
   return (
-    <div className="relative min-h-screen flex flex-col font-sans selection:bg-purple-200 selection:text-purple-900">
+    <div className="relative min-h-screen flex flex-col font-sans selection:bg-purple-200 selection:text-purple-900 w-full max-w-full overflow-x-hidden">
       {/* Scroll Progress Bar */}
       <ScrollProgressBar />
 
@@ -43,7 +43,7 @@ function MainLayout() {
       {!isAdminRoute && <Navbar />}
 
       {/* Main Content Area */}
-      <main className="flex-1 z-10 relative">
+      <main className="flex-1 z-10 relative w-full max-w-full min-w-0">
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/pendaftaran" element={<PendaftaranPage />} />

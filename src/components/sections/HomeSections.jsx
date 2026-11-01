@@ -31,13 +31,16 @@ function StatCard({ value, label, sublabel, decimals = 0, suffix = '' }) {
 // Hero Section
 // ========================
 export function HeroSection({ workshops = [] }) {
-  const [activeWorkshop, setActiveWorkshop] = useState(
-    workshops.find((w) => w.status === 'open') || workshops[0] || null
-  );
+  const getFeaturedOrActive = (list) => {
+    if (!list || list.length === 0) return null;
+    return list.find((w) => w.is_featured) || list.find((w) => w.status === 'open') || list[0] || null;
+  };
+
+  const [activeWorkshop, setActiveWorkshop] = useState(getFeaturedOrActive(workshops));
 
   useEffect(() => {
     if (workshops.length > 0) {
-      setActiveWorkshop(workshops.find((w) => w.status === 'open') || workshops[0]);
+      setActiveWorkshop(getFeaturedOrActive(workshops));
     }
   }, [workshops]);
 
@@ -121,24 +124,24 @@ export function HeroSection({ workshops = [] }) {
             transition={{ duration: 0.75, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
           >
             {/* Floating badge top-right */}
-            <div className="absolute -top-4 -right-4 px-3 py-2 rounded-2xl bg-white shadow-xl border border-purple-200 flex items-center gap-2 z-20 animate-float-slow">
-              <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-purple-600 to-indigo-600 text-white flex items-center justify-center text-xs">
+            <div className="absolute -top-3 right-2 sm:-top-4 sm:-right-4 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-2xl bg-white/95 backdrop-blur-md shadow-xl border border-purple-200 flex items-center gap-2 z-20 animate-float-slow max-w-[calc(100%-1rem)]">
+              <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-gradient-to-tr from-purple-600 to-indigo-600 text-white flex items-center justify-center text-xs shrink-0">
                 <Star size={12} fill="currentColor" />
               </div>
-              <div>
-                <p className="text-[10px] font-bold text-slate-900 leading-none">Laboratorium Pengembangan</p>
-                <p className="text-[9px] text-purple-600 font-semibold leading-none mt-0.5">UIN Alauddin Makassar</p>
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold text-slate-900 leading-none truncate">Laboratorium Pengembangan</p>
+                <p className="text-[9px] text-purple-600 font-semibold leading-none mt-0.5 truncate">UIN Alauddin Makassar</p>
               </div>
             </div>
 
             {/* Floating badge bottom-left */}
-            <div className="absolute -bottom-4 -left-4 px-3 py-2 rounded-2xl bg-white shadow-xl border border-purple-200 flex items-center gap-2 z-20 animate-float-reverse">
-              <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-purple-600 to-violet-600 text-white flex items-center justify-center text-xs">
+            <div className="absolute -bottom-3 left-2 sm:-bottom-4 sm:-left-4 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-2xl bg-white/95 backdrop-blur-md shadow-xl border border-purple-200 flex items-center gap-2 z-20 animate-float-reverse max-w-[calc(100%-1rem)]">
+              <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-gradient-to-tr from-purple-600 to-violet-600 text-white flex items-center justify-center text-xs shrink-0">
                 <Award size={12} />
               </div>
-              <div>
-                <p className="text-[10px] font-bold text-slate-900 leading-none">E-Sertifikat Instan</p>
-                <p className="text-[9px] text-purple-600 font-semibold leading-none mt-0.5">Otomatis Terbit</p>
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold text-slate-900 leading-none truncate">E-Sertifikat Instan</p>
+                <p className="text-[9px] text-purple-600 font-semibold leading-none mt-0.5 truncate">Otomatis Terbit</p>
               </div>
             </div>
 
@@ -146,24 +149,34 @@ export function HeroSection({ workshops = [] }) {
             <div className="bento-card glow-border rounded-3xl p-6 sm:p-7 border border-purple-200/80 shadow-2xl relative overflow-hidden">
               <div className="absolute -right-16 -top-16 w-48 h-48 bg-purple-300/40 rounded-full blur-2xl pointer-events-none" />
 
-              <div className="flex items-center justify-between mb-5">
+              <div className="flex items-center justify-between mb-5 flex-wrap gap-2">
                 <div className="flex items-center gap-2.5">
                   <span className={`w-2.5 h-2.5 rounded-full ${activeWorkshop?.status === 'open' ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`} />
-                  <span className="text-xs font-extrabold text-slate-800 uppercase tracking-wider">Workshop & Pelatihan</span>
+                  <span className="text-xs font-extrabold text-slate-800 uppercase tracking-wider">
+                    {activeWorkshop?.is_featured ? '⭐ Workshop Pilihan Lab' : 'Workshop & Pelatihan'}
+                  </span>
                 </div>
-                <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold ${
-                  activeWorkshop?.is_attendance_open
-                    ? 'bg-purple-100 text-purple-900 border border-purple-200'
-                    : activeWorkshop?.status === 'open'
-                    ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
-                    : 'bg-slate-100 text-slate-600 border border-slate-200'
-                }`}>
-                  {activeWorkshop?.is_attendance_open
-                    ? '⚡ Presensi Hari-H Aktif'
-                    : activeWorkshop?.status === 'open'
-                    ? '● Pendaftaran Dibuka'
-                    : 'Pendaftaran Ditutup'}
-                </span>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {activeWorkshop?.is_featured && (
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-100 text-amber-900 border border-amber-300 flex items-center gap-1 shadow-2xs">
+                      <Star size={10} className="text-amber-600 fill-amber-500" />
+                      Sorotan
+                    </span>
+                  )}
+                  <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold ${
+                    activeWorkshop?.is_attendance_open
+                      ? 'bg-purple-100 text-purple-900 border border-purple-200'
+                      : activeWorkshop?.status === 'open'
+                      ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                      : 'bg-slate-100 text-slate-600 border border-slate-200'
+                  }`}>
+                    {activeWorkshop?.is_attendance_open
+                      ? '⚡ Presensi Hari-H Aktif'
+                      : activeWorkshop?.status === 'open'
+                      ? '● Pendaftaran Dibuka'
+                      : 'Pendaftaran Ditutup'}
+                  </span>
+                </div>
               </div>
 
               {activeWorkshop ? (
@@ -245,8 +258,15 @@ export function HeroSection({ workshops = [] }) {
             </div>
 
             {/* Live Validation Tag */}
-            <div className="absolute -top-2 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-slate-900 text-white text-[10px] font-bold border border-purple-700/50 shadow-lg">
-              Live Validation 2026
+            <div className="absolute -top-2 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-slate-900 text-white text-[10px] font-bold border border-purple-700/50 shadow-lg flex items-center gap-1.5 whitespace-nowrap">
+              {activeWorkshop?.is_featured ? (
+                <>
+                  <Star size={11} className="text-amber-400 fill-amber-400" />
+                  <span>Sorotan Workshop 2026</span>
+                </>
+              ) : (
+                <span>Live Validation 2026</span>
+              )}
             </div>
           </motion.div>
         </div>
@@ -398,7 +418,7 @@ function NewsDetailModal({ news, onClose }) {
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.92, y: 20 }}
           transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-          className="relative bg-white rounded-3xl max-w-2xl w-full max-h-[92vh] overflow-y-auto shadow-2xl border border-purple-200 z-10 no-scrollbar my-auto"
+          className="relative bg-white rounded-3xl max-w-2xl w-full max-w-[calc(100vw-1.5rem)] max-h-[92vh] overflow-y-auto shadow-2xl border border-purple-200 z-10 no-scrollbar my-auto mx-auto"
         >
           {/* Close button floating */}
           <button

@@ -251,16 +251,16 @@ export default function TentangPage() {
                   Kini, laboratorium ini melayani mahasiswa dan akademisi setiap saat melalui program praktikum microleading, bimbingan penulisan karya ilmiah, uji kompetensi, serta penerbitan E-Sertifikat terverifikasi.
                 </p>
 
-                <div className="pt-2 flex flex-wrap gap-4">
-                  <div className="p-3.5 rounded-2xl bg-purple-50 border border-purple-200 flex-1 min-w-[140px]">
+                <div className="pt-2 flex flex-wrap gap-3 sm:gap-4">
+                  <div className="p-3.5 rounded-2xl bg-purple-50 border border-purple-200 flex-1 min-w-0 sm:min-w-[120px]">
                     <p className="text-2xl font-extrabold text-purple-900 font-display">A</p>
                     <p className="text-xs text-slate-600 font-semibold">Akreditasi Prodi Unggul</p>
                   </div>
-                  <div className="p-3.5 rounded-2xl bg-purple-50 border border-purple-200 flex-1 min-w-[140px]">
+                  <div className="p-3.5 rounded-2xl bg-purple-50 border border-purple-200 flex-1 min-w-0 sm:min-w-[120px]">
                     <p className="text-2xl font-extrabold text-purple-900 font-display">1.000+</p>
                     <p className="text-xs text-slate-600 font-semibold">Alumni Terbaik</p>
                   </div>
-                  <div className="p-3.5 rounded-2xl bg-purple-50 border border-purple-200 flex-1 min-w-[140px]">
+                  <div className="p-3.5 rounded-2xl bg-purple-50 border border-purple-200 flex-1 min-w-0 sm:min-w-[120px]">
                     <p className="text-2xl font-extrabold text-purple-900 font-display">100%</p>
                     <p className="text-xs text-slate-600 font-semibold">Digital & Terverifikasi</p>
                   </div>
@@ -371,7 +371,7 @@ export default function TentangPage() {
               </div>
 
               {/* Grid Personil Presisi */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-5">
                 {filteredTeam.map((member, idx) => (
                   <motion.div
                     key={member.name}
@@ -379,10 +379,10 @@ export default function TentangPage() {
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
                     transition={{ duration: 0.35, delay: idx * 0.05 }}
-                    className="bento-card group rounded-3xl overflow-hidden p-5 flex flex-col items-center text-center justify-between border border-purple-200/80 hover:border-purple-300 hover:shadow-xl transition-all duration-300 bg-white/95 h-full"
+                    className="bento-card group rounded-2xl sm:rounded-3xl overflow-hidden p-3 sm:p-5 flex flex-col items-center text-center justify-between border border-purple-200/80 hover:border-purple-300 hover:shadow-xl transition-all duration-300 bg-white/95 h-full"
                   >
                     {/* Frame Foto Portrait Presisi */}
-                    <div className="relative w-full max-w-[160px] aspect-[4/5] rounded-2xl overflow-hidden mb-3.5 shadow-md border-2 border-purple-200/80 bg-slate-100 group-hover:border-purple-400 group-hover:shadow-lg transition-all shrink-0">
+                    <div className="relative w-full max-w-[120px] sm:max-w-[150px] aspect-[4/5] rounded-xl sm:rounded-2xl overflow-hidden mb-2.5 sm:mb-3.5 shadow-md border-2 border-purple-200/80 bg-slate-100 group-hover:border-purple-400 group-hover:shadow-lg transition-all shrink-0">
                       <img
                         src={member.image}
                         alt={member.name}
@@ -393,12 +393,12 @@ export default function TentangPage() {
                     </div>
 
                     {/* Nama Lengkap */}
-                    <h4 className="font-display font-extrabold text-slate-900 text-sm leading-snug mb-2 group-hover:text-purple-900 transition-colors flex-1 flex items-center justify-center">
+                    <h4 className="font-display font-extrabold text-slate-900 text-xs sm:text-sm leading-snug mb-1.5 sm:mb-2 group-hover:text-purple-900 transition-colors flex-1 flex items-center justify-center">
                       {member.name}
                     </h4>
 
                     {/* Role / Jabatan */}
-                    <span className={`inline-block px-2.5 py-1 rounded-full text-[11px] font-bold tracking-wide border ${member.category === 'pimpinan'
+                    <span className={`inline-block px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-[11px] font-bold tracking-wide border ${member.category === 'pimpinan'
                       ? 'bg-amber-100 text-amber-900 border-amber-200'
                       : 'bg-purple-100 text-purple-900 border-purple-200'
                       }`}>

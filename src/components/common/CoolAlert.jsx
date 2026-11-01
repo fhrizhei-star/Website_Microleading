@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -295,7 +295,7 @@ export default function CoolAlertContainer() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 15 }}
               transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-              className={`relative bg-white/95 backdrop-blur-2xl rounded-3xl max-w-sm sm:max-w-md w-full p-6 sm:p-7 shadow-2xl border ${
+              className={`relative bg-white/95 backdrop-blur-2xl rounded-3xl max-w-sm sm:max-w-md w-full max-w-[calc(100vw-1.5rem)] p-5 sm:p-7 shadow-2xl border ${
                 getDialogTheme(dialog.type).borderColor
               } text-center overflow-hidden z-10 my-auto`}
             >
@@ -339,14 +339,14 @@ export default function CoolAlertContainer() {
               <h3 className="font-display font-extrabold text-xl sm:text-2xl text-slate-900 mb-2 leading-snug">
                 {dialog.title}
               </h3>
-              <p className="text-slate-600 text-xs sm:text-sm leading-relaxed mb-6 whitespace-pre-line px-1">
+              <p className="text-slate-600 text-xs sm:text-sm leading-relaxed mb-6 whitespace-pre-line px-1 break-words">
                 {typeof dialog.message === 'string'
                   ? dialog.message
                   : (dialog.message?.text || dialog.message?.message || JSON.stringify(dialog.message || ''))}
               </p>
 
               {/* Action Buttons */}
-              <div className="flex items-center justify-center gap-3">
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-2.5 sm:gap-3 w-full">
                 {dialog.isConfirm && (
                   <button
                     type="button"
@@ -374,7 +374,7 @@ export default function CoolAlertContainer() {
       </AnimatePresence>
 
       {/* 2. Floating Toasts */}
-      <div className="fixed top-5 right-4 sm:right-6 z-[99999] flex flex-col gap-2.5 pointer-events-none max-w-sm w-full">
+      <div className="fixed top-4 right-3 sm:top-5 sm:right-6 z-[99999] flex flex-col gap-2.5 pointer-events-none max-w-[calc(100vw-1.5rem)] sm:max-w-sm w-full">
         <AnimatePresence>
           {toasts.map((toast) => (
             <motion.div

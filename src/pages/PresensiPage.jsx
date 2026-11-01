@@ -19,7 +19,7 @@ import {
 import GoogleDriveIcon from '../components/common/GoogleDriveIcon';
 import PageTransition, { SectionReveal, StaggerContainer, StaggerItem } from '../components/transitions/PageTransition';
 import { playClick, playSuccess, playError } from '../utils/audio';
-import { showAlert, showToast } from '../components/common/CoolAlert';
+import { showAlert, showConfirm, showToast } from '../components/common/CoolAlert';
 
 // ========================
 // Tab Switcher
@@ -391,7 +391,7 @@ function ThankYouModal({ record, onClose, onGoToCek, onDownload }) {
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.9, y: 20 }}
           transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-          className="relative z-10 w-full max-w-lg bg-gradient-to-b from-white via-purple-50/40 to-white rounded-3xl border border-purple-200/90 shadow-2xl p-6 sm:p-8 text-center space-y-5 my-auto overflow-hidden"
+          className="relative z-10 w-full max-w-lg max-w-[calc(100vw-1.5rem)] bg-gradient-to-b from-white via-purple-50/40 to-white rounded-3xl border border-purple-200/90 shadow-2xl p-5 sm:p-8 text-center space-y-5 my-auto overflow-hidden mx-auto"
         >
           {/* Ambient Lighting Orbs */}
           <div className="absolute -top-12 -right-12 w-36 h-36 bg-purple-400/20 rounded-full blur-2xl pointer-events-none" />
@@ -696,50 +696,79 @@ function AttendanceForm({ workshops, selectedWorkshop, onGoToCek }) {
   const [successRecord, setSuccessRecord] = useState(null);
 
   const [fileInputRef] = [useRef(null)];
-  const [lookupQuery, setLookupQuery] = useState('');
-  const [lookupSuccess, setLookupSuccess] = useState(null);
-  const [isSearching, setIsSearching] = useState(false);
+
+  // Express Check-In States
+  const [nimInput, setNimInput] = useState('');
+  const [matchedParticipant, setMatchedParticipant] = useState(null);
+  const [isSearchingNim, setIsSearchingNim] = useState(false);
+  const [nimNotFound, setNimNotFound] = useState(null);
 
   const currentSelectedWs = workshops.find(w => String(w.id) === String(form.workshop_id)) || banner || selectedWorkshop;
   const attendanceAccess = getWorkshopAttendanceStatus(currentSelectedWs);
 
-  const handleAutoFillFromRegistration = async () => {
-    if (!lookupQuery.trim()) {
-      showToast('Ketik NIM atau Kode Registrasi terlebih dahulu', 'warning');
-      return;
+  // Verifikasi Instan berdasarkan NIM / NIP / Identitas
+  const handleVerifyNim = async (explicitNim = null) => {
+    const rawQuery = explicitNim !== null ? explicitNim : nimInput;
+    const query = (rawQuery || '').trim();
+    if (!query) {
+      showToast('Masukkan NIM atau NIP Anda terlebih dahulu', 'warning');
+      return null;
     }
+
+    if (!form.workshop_id) {
+      showAlert({
+        title: 'Pilih Workshop Terlebih Dahulu',
+        message: 'Silakan pilih workshop/kegiatan yang Anda ikuti terlebih dahulu pada bagian 1.',
+        type: 'warning'
+      });
+      return null;
+    }
+
     playClick();
-    setIsSearching(true);
+    setIsSearchingNim(true);
+    setNimNotFound(null);
+
     try {
-      const match = await findRegistrationByNimOrCode(lookupQuery, form.workshop_id || null);
+      const match = await findRegistrationByNimOrCode(query, form.workshop_id);
       if (match) {
+        setMatchedParticipant(match);
         setForm(f => ({
           ...f,
-          workshop_id: match.workshop_id || f.workshop_id,
           nama: match.nama || f.nama,
-          identitas: match.nim_nip || f.identitas,
+          identitas: match.nim_nip || query,
           instansi: match.instansi || f.instansi,
           whatsapp: match.whatsapp || f.whatsapp,
           email: match.email || f.email,
         }));
-        if (match.workshop_id) {
-          handleWorkshopChange(match.workshop_id);
-        }
-        setLookupSuccess(match);
         playSuccess();
-        showToast(`Data ${match.nama} ditemukan & diisi otomatis!`, 'success');
+        showToast(`Verifikasi Berhasil: ${match.nama}`, 'success');
+        return match;
       } else {
         playError();
-        setLookupSuccess(null);
-        showAlert({
-          title: 'Data Belum Ditemukan',
-          message: `Tidak ditemukan pendaftaran dengan NIM / Kode "${lookupQuery}". Anda dapat melanjutkan dengan mengisi formulir presensi secara manual di bawah.`,
-          type: 'info'
-        });
+        setMatchedParticipant(null);
+        setNimNotFound({ query });
+        return null;
       }
+    } catch (err) {
+      console.warn('Error verifikasi Identitas:', err);
+      return null;
     } finally {
-      setIsSearching(false);
+      setIsSearchingNim(false);
     }
+  };
+
+  const handleResetParticipant = () => {
+    setMatchedParticipant(null);
+    setNimInput('');
+    setNimNotFound(null);
+    setForm(f => ({
+      ...f,
+      nama: '',
+      identitas: '',
+      instansi: '',
+      email: '',
+      whatsapp: '',
+    }));
   };
 
   useEffect(() => {
@@ -755,6 +784,27 @@ function AttendanceForm({ workshops, selectedWorkshop, onGoToCek }) {
     set('workshop_id', id);
     const ws = workshops.find(w => String(w.id) === String(id));
     setBanner(ws || null);
+
+    // Sinkronkan kembali verifikasi jika peserta sudah memasukkan NIM
+    if (nimInput.trim() && id) {
+      findRegistrationByNimOrCode(nimInput.trim(), id).then(match => {
+        if (match) {
+          setMatchedParticipant(match);
+          setForm(f => ({
+            ...f,
+            nama: match.nama || f.nama,
+            identitas: match.nim_nip || nimInput.trim(),
+            instansi: match.instansi || f.instansi,
+            whatsapp: match.whatsapp || f.whatsapp,
+            email: match.email || f.email,
+          }));
+          setNimNotFound(null);
+        } else {
+          setMatchedParticipant(null);
+          setNimNotFound({ query: nimInput.trim() });
+        }
+      }).catch(() => { });
+    }
   };
 
   const handleProcessFile = (file) => {
@@ -923,6 +973,30 @@ function AttendanceForm({ workshops, selectedWorkshop, onGoToCek }) {
       return;
     }
 
+    // Otomatis verifikasi jika peserta sudah mengetik NIM tapi belum menekan tombol verifikasi
+    let activeIdentitas = form.identitas;
+    let activeNama = form.nama;
+
+    if (!matchedParticipant) {
+      if (nimInput.trim()) {
+        const match = await handleVerifyNim(nimInput.trim());
+        if (match) {
+          activeIdentitas = match.nim_nip || nimInput.trim();
+          activeNama = match.nama;
+        } else {
+          return;
+        }
+      } else {
+        playError();
+        showAlert({
+          title: 'NIM / NIP Belum Dimasukkan',
+          message: 'Silakan masukkan NIM atau NIP Anda terlebih dahulu pada formulir bagian 2 untuk verifikasi presensi.',
+          type: 'warning',
+        });
+        return;
+      }
+    }
+
     if (access.requiresPin) {
       const userPin = (form.pin || '').trim().toUpperCase();
       const expectedPin = (access.pin || '').trim().toUpperCase();
@@ -958,16 +1032,16 @@ function AttendanceForm({ workshops, selectedWorkshop, onGoToCek }) {
     try {
       // 1. Cek kebijakan pendaftaran sebelum presensi
       if (currentSelectedWs && currentSelectedWs.require_registration !== false) {
-        const matchReg = await findRegistrationByNimOrCode(form.identitas, form.workshop_id);
+        const matchReg = matchedParticipant || await findRegistrationByNimOrCode(activeIdentitas, form.workshop_id);
         if (!matchReg) {
           setLoading(false);
           playError();
           const goToRegister = await showConfirm({
-            title: 'NIM Belum Terdaftar!',
-            message: `Kegiatan "${currentSelectedWs.title}" mewajibkan pendaftaran sebelum pengisian presensi.\n\nNIM / Identitas Anda (${form.identitas}) belum ditemukan dalam daftar peserta. Apakah Anda ingin membuka formulir pendaftaran sekarang?`,
+            title: 'Identitas Belum Terdaftar!',
+            message: `Kegiatan "${currentSelectedWs.title}" mewajibkan pendaftaran sebelum pengisian presensi.\n\nNomor Identitas / NIM / NIP Anda (${activeIdentitas}) belum ditemukan dalam daftar peserta. Apakah Anda ingin membuka formulir pendaftaran sekarang?`,
             type: 'warning',
             confirmText: 'Daftar Sekarang (Hanya 30 Detik) →',
-            cancelText: 'Periksa Kembali NIM',
+            cancelText: 'Periksa Kembali',
           });
           if (goToRegister) {
             window.location.href = `/pendaftaran?workshop=${currentSelectedWs.id}`;
@@ -987,7 +1061,7 @@ function AttendanceForm({ workshops, selectedWorkshop, onGoToCek }) {
         const duplicateToday = existingAttendance.find(
           (r) =>
             String(r.workshop_id) === String(form.workshop_id) &&
-            String(r.identitas).trim().toUpperCase() === String(form.identitas).trim().toUpperCase() &&
+            String(r.identitas).trim().toUpperCase() === String(activeIdentitas).trim().toUpperCase() &&
             r.timestamp && r.timestamp.startsWith(todayDateStr)
         );
 
@@ -995,7 +1069,7 @@ function AttendanceForm({ workshops, selectedWorkshop, onGoToCek }) {
           setLoading(false);
           showAlert({
             title: 'Presensi Hari Ini Sudah Diisi',
-            message: `NIM ${form.identitas} sudah tercatat presensi pada hari ini (${todayDateStr}) untuk sesi praktikum ini.`,
+            message: `Identitas ${activeIdentitas} sudah tercatat presensi pada hari ini (${todayDateStr}) untuk sesi praktikum ini.`,
             type: 'info',
           });
           setSuccessRecord(duplicateToday);
@@ -1006,14 +1080,14 @@ function AttendanceForm({ workshops, selectedWorkshop, onGoToCek }) {
         const duplicateRecord = existingAttendance.find(
           (r) =>
             String(r.workshop_id) === String(form.workshop_id) &&
-            String(r.identitas).trim().toUpperCase() === String(form.identitas).trim().toUpperCase()
+            String(r.identitas).trim().toUpperCase() === String(activeIdentitas).trim().toUpperCase()
         );
 
         if (duplicateRecord) {
           setLoading(false);
           showAlert({
             title: 'Presensi Sudah Pernah Diisi',
-            message: `NIM ${form.identitas} sudah tercatat presensi pada kegiatan ini dengan nomor referensi ${duplicateRecord.cert_number}.`,
+            message: `Identitas ${activeIdentitas} sudah tercatat presensi pada kegiatan ini dengan nomor referensi ${duplicateRecord.cert_number}.`,
             type: 'info',
           });
           setSuccessRecord(duplicateRecord);
@@ -1023,6 +1097,8 @@ function AttendanceForm({ workshops, selectedWorkshop, onGoToCek }) {
 
       const payload = {
         ...form,
+        nama: activeNama || form.nama,
+        identitas: activeIdentitas || form.identitas,
         bukti_file: {
           name: buktiFile.name,
           size: buktiFile.size,
@@ -1046,12 +1122,15 @@ function AttendanceForm({ workshops, selectedWorkshop, onGoToCek }) {
         colors: ['#0066da', '#00ac47', '#ea4335', '#ffba00', '#9333ea', '#ffffff'],
       });
 
-      // Pop-up Menarik Ucapan Terima Kasih (TIDAK langsung membuka tab baru ke Google Drive)
+      // Pop-up Menarik Ucapan Terima Kasih
       setSuccessRecord(result);
       setShowThankYouModal(true);
 
       // Reset form
       setForm({ workshop_id: '', nama: '', identitas: '', instansi: '', email: '', whatsapp: '', kesan: '', pin: '' });
+      setNimInput('');
+      setMatchedParticipant(null);
+      setNimNotFound(null);
       setBuktiFile(null);
       setBanner(null);
     } catch (err) {
@@ -1104,62 +1183,6 @@ function AttendanceForm({ workshops, selectedWorkshop, onGoToCek }) {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-7">
-        {/* Quick Auto-Fill from Registration Box */}
-        <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-purple-100/90 via-indigo-50/80 to-purple-50/90 border-2 border-purple-300/80 shadow-md">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-xl bg-purple-600 text-white flex items-center justify-center shadow-xs shrink-0">
-                <Sparkles size={16} />
-              </div>
-              <div>
-                <h4 className="font-bold text-slate-900 text-xs sm:text-sm">Sudah Mendaftar Workshop Sebelumnya?</h4>
-                <p className="text-[11px] text-slate-600">Ketik NIM atau Kode Registrasi Anda untuk mengisi formulir secara otomatis</p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 w-full sm:w-auto">
-              <input
-                type="text"
-                value={lookupQuery}
-                onChange={e => setLookupQuery(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAutoFillFromRegistration(); } }}
-                placeholder="Ketik NIM / No. Registrasi..."
-                className="px-3.5 py-2 rounded-xl border border-purple-300 text-xs bg-white text-slate-900 focus:outline-none focus:border-purple-600 flex-1 sm:w-56 font-mono"
-              />
-              <button
-                type="button"
-                onClick={handleAutoFillFromRegistration}
-                disabled={isSearching}
-                className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-purple-700 hover:bg-purple-800 transition-colors shadow-xs flex items-center gap-1.5 shrink-0 cursor-pointer disabled:opacity-50"
-              >
-                <Search size={13} />
-                <span>{isSearching ? 'Mencari...' : 'Auto-Fill'}</span>
-              </button>
-            </div>
-          </div>
-
-          {lookupSuccess && (
-            <motion.div
-              initial={{ opacity: 0, y: -5 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mt-3 p-2.5 rounded-xl bg-emerald-100/90 border border-emerald-300 text-emerald-900 text-xs flex items-center justify-between gap-2"
-            >
-              <div className="flex items-center gap-2 truncate">
-                <CheckCircle2 size={15} className="text-emerald-600 shrink-0" />
-                <span className="truncate">
-                  Terdaftar: <strong>{lookupSuccess.nama}</strong> ({lookupSuccess.reg_code}) - Data berhasil diisi otomatis.
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setLookupSuccess(null)}
-                className="text-[10px] text-emerald-700 font-bold hover:underline shrink-0"
-              >
-                Tutup
-              </button>
-            </motion.div>
-          )}
-        </div>
 
         {/* ============================================================ */}
         {/* SECTION 1: Pilih Workshop / Kegiatan (Modern Card Styling)   */}
@@ -1288,20 +1311,18 @@ function AttendanceForm({ workshops, selectedWorkshop, onGoToCek }) {
                   initial={{ opacity: 0, y: -4 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -4 }}
-                  className={`p-3.5 rounded-2xl border text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs ${
-                    attendanceAccess.code === 'OPEN_LIVE'
-                      ? 'bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 border-emerald-300 text-emerald-950'
-                      : (currentSelectedWs.has_certificate !== false
-                        ? 'bg-gradient-to-r from-purple-50 via-indigo-50/40 to-purple-50 border-purple-300 text-purple-950'
-                        : 'bg-gradient-to-r from-blue-50 via-indigo-50/40 to-blue-50 border-blue-300 text-blue-950')
-                  }`}
+                  className={`p-3.5 rounded-2xl border text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs ${attendanceAccess.code === 'OPEN_LIVE'
+                    ? 'bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 border-emerald-300 text-emerald-950'
+                    : (currentSelectedWs.has_certificate !== false
+                      ? 'bg-gradient-to-r from-purple-50 via-indigo-50/40 to-purple-50 border-purple-300 text-purple-950'
+                      : 'bg-gradient-to-r from-blue-50 via-indigo-50/40 to-blue-50 border-blue-300 text-blue-950')
+                    }`}
                 >
                   <div className="flex items-center gap-2.5">
-                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 shadow-2xs ${
-                      attendanceAccess.code === 'OPEN_LIVE'
-                        ? 'bg-emerald-600 text-white'
-                        : (currentSelectedWs.has_certificate !== false ? 'bg-purple-600 text-white' : 'bg-blue-600 text-white')
-                    }`}>
+                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 shadow-2xs ${attendanceAccess.code === 'OPEN_LIVE'
+                      ? 'bg-emerald-600 text-white'
+                      : (currentSelectedWs.has_certificate !== false ? 'bg-purple-600 text-white' : 'bg-blue-600 text-white')
+                      }`}>
                       {attendanceAccess.code === 'OPEN_LIVE' ? (
                         <Radio size={16} className="animate-pulse" />
                       ) : (
@@ -1321,13 +1342,12 @@ function AttendanceForm({ workshops, selectedWorkshop, onGoToCek }) {
                       </p>
                     </div>
                   </div>
-                  <span className={`px-3 py-1 rounded-full text-[10px] font-extrabold shrink-0 self-start sm:self-center shadow-2xs flex items-center gap-1.5 ${
-                    attendanceAccess.code === 'OPEN_LIVE'
-                      ? 'bg-emerald-100 text-emerald-900 border border-emerald-300'
-                      : (currentSelectedWs.has_certificate !== false
-                        ? 'bg-purple-100 text-purple-900 border border-purple-300'
-                        : 'bg-blue-100 text-blue-900 border border-blue-300')
-                  }`}>
+                  <span className={`px-3 py-1 rounded-full text-[10px] font-extrabold shrink-0 self-start sm:self-center shadow-2xs flex items-center gap-1.5 ${attendanceAccess.code === 'OPEN_LIVE'
+                    ? 'bg-emerald-100 text-emerald-900 border border-emerald-300'
+                    : (currentSelectedWs.has_certificate !== false
+                      ? 'bg-purple-100 text-purple-900 border border-purple-300'
+                      : 'bg-blue-100 text-blue-900 border border-blue-300')
+                    }`}>
                     {attendanceAccess.code === 'OPEN_LIVE' ? (
                       <>
                         <Zap size={11} className="text-emerald-700" />
@@ -1400,114 +1420,175 @@ function AttendanceForm({ workshops, selectedWorkshop, onGoToCek }) {
         )}
 
         {/* ============================================================ */}
-        {/* SECTION 2: Data Identitas Peserta (Clean Input Group Icons)  */}
+        {/* SECTION 2: Identitas Peserta (Presensi Kilat / Express)      */}
         {/* ============================================================ */}
-        <div className="rounded-3xl p-5 sm:p-6 bg-gradient-to-br from-white/90 via-purple-50/20 to-white/80 border border-purple-200/90 shadow-sm space-y-4">
+        <div className="rounded-3xl p-5 sm:p-6 bg-gradient-to-br from-white/95 via-purple-50/30 to-white/90 border-2 border-purple-200/90 shadow-sm space-y-4">
           <div className="flex items-center gap-2.5 pb-2 border-b border-purple-100">
             <div className="w-8 h-8 rounded-xl bg-purple-600 text-white flex items-center justify-center font-bold text-xs shadow-md shadow-purple-600/25">
               2
             </div>
             <div>
               <h3 className="font-display font-extrabold text-slate-900 text-sm sm:text-base leading-tight">
-                Data Identitas Peserta
+                Identitas Peserta (Presensi Kilat)
               </h3>
-              <p className="text-[11px] text-slate-500">Pastikan nama dan nomor identitas sesuai dengan kartu mahasiswa/KTP</p>
+              <p className="text-[11px] text-slate-500">
+                Cukup masukkan NIM atau NIP Anda untuk verifikasi otomatis tanpa perlu ketik ulang data diri
+              </p>
             </div>
           </div>
 
+          {/* STATE A: Participant Already Verified */}
+          {matchedParticipant ? (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.98 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="rounded-2xl p-4 sm:p-5 bg-gradient-to-br from-emerald-500/10 via-teal-500/5 to-emerald-50 border-2 border-emerald-400 shadow-sm space-y-3 overflow-hidden"
+            >
+              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                <div className="flex items-start gap-3.5 min-w-0">
+                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-white flex items-center justify-center font-extrabold text-base shadow-md shadow-emerald-500/25 shrink-0">
+                    {matchedParticipant.nama ? matchedParticipant.nama.charAt(0).toUpperCase() : <User size={20} />}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h4 className="font-extrabold text-slate-900 text-base sm:text-lg truncate">
+                        {matchedParticipant.nama}
+                      </h4>
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1 shadow-2xs">
+                        <BadgeCheck size={12} className="text-emerald-600" />
+                        Terverifikasi
+                      </span>
+                    </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4.5">
-            {/* Nama Lengkap */}
-            <div className="sm:col-span-2 space-y-1.5">
-              <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wider">
-                Nama Lengkap & Gelar <span className="text-rose-500">*</span>
-              </label>
-              <div className="relative">
-                <User size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-purple-600 pointer-events-none" />
-                <input
-                  type="text"
-                  value={form.nama}
-                  onChange={e => set('nama', e.target.value)}
-                  placeholder="Contoh: Ahmad Rizky Pratama, S.Pd."
-                  required
-                  className="w-full pl-11 pr-4 py-3 rounded-2xl border-2 border-slate-200/90 bg-white/90 text-sm text-slate-900 placeholder:text-slate-400 font-medium focus:border-purple-600 focus:ring-4 focus:ring-purple-500/10 focus:outline-none transition-all shadow-xs"
-                />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 mt-2 text-xs text-slate-600">
+                      <div className="flex items-center gap-1.5 truncate">
+                        <Hash size={13} className="text-emerald-700 shrink-0" />
+                        <span className="font-mono font-bold text-slate-800 truncate">
+                          {matchedParticipant.nim_nip}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5 truncate">
+                        <Building size={13} className="text-emerald-700 shrink-0" />
+                        <span className="truncate">{matchedParticipant.instansi || 'UIN Alauddin Makassar'}</span>
+                      </div>
+                      {matchedParticipant.email && (
+                        <div className="flex items-center gap-1.5 truncate">
+                          <Mail size={13} className="text-emerald-700 shrink-0" />
+                          <span className="truncate">{matchedParticipant.email}</span>
+                        </div>
+                      )}
+                      {matchedParticipant.whatsapp && (
+                        <div className="flex items-center gap-1.5 truncate">
+                          <Phone size={13} className="text-emerald-700 shrink-0" />
+                          <span className="truncate font-mono">{matchedParticipant.whatsapp}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleResetParticipant}
+                  className="px-3 py-1.5 rounded-xl text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition-colors shadow-2xs shrink-0 cursor-pointer flex items-center gap-1"
+                  title="Ganti identitas peserta lain"
+                >
+                  <X size={13} />
+                  <span className="hidden sm:inline">Bukan Anda? Ganti NIM / NIP</span>
+                  <span className="sm:hidden">Ganti</span>
+                </button>
+              </div>
+
+              <div className="pt-2.5 border-t border-emerald-200/80 flex items-center justify-between text-[11px] text-emerald-900 font-semibold flex-wrap gap-2">
+                <span className="flex items-center gap-1.5">
+                  <CheckCircle2 size={13} className="text-emerald-600 shrink-0" />
+                  Data profil Anda terhubung otomatis. Cukup unggah berkas bukti kehadiran di bawah untuk konfirmasi.
+                </span>
+              </div>
+            </motion.div>
+          ) : (
+            /* STATE B: Express NIM/NIP Input Box */
+            <div className="space-y-3">
+              <div className="flex flex-col sm:flex-row gap-2.5">
+                <div className="relative flex-1">
+                  <Hash size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-purple-600 pointer-events-none" />
+                  <input
+                    type="text"
+                    value={nimInput}
+                    onChange={e => {
+                      setNimInput(e.target.value);
+                      if (nimNotFound) setNimNotFound(null);
+                    }}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleVerifyNim();
+                      }
+                    }}
+                    placeholder="Ketik NIM / NIP Anda (contoh: 20400121045 atau 1985...)..."
+                    className="w-full pl-11 pr-4 py-3.5 rounded-2xl border-2 border-purple-200 bg-white text-base text-slate-900 font-mono font-bold placeholder:font-sans placeholder:font-normal placeholder:text-slate-400 focus:border-purple-600 focus:ring-4 focus:ring-purple-500/10 focus:outline-none transition-all shadow-xs"
+                  />
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => handleVerifyNim()}
+                  disabled={isSearchingNim || !nimInput.trim()}
+                  className="px-6 py-3.5 rounded-2xl font-bold text-sm text-white bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 shadow-md shadow-purple-600/25 active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 shrink-0"
+                >
+                  {isSearchingNim ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" />
+                      <span>Mengecek...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Zap size={16} className="text-amber-300" />
+                      <span>Verifikasi Data</span>
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {/* Alert: NIM / NIP Not Found */}
+              {nimNotFound && (
+                <motion.div
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="p-4 rounded-2xl bg-amber-50 border-2 border-amber-300 text-amber-950 text-xs space-y-3 shadow-xs"
+                >
+                  <div className="flex items-start gap-2.5">
+                    <AlertCircle size={18} className="text-amber-600 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-extrabold text-sm text-amber-950">
+                        Nomor Identitas "{nimNotFound.query}" Belum Terdaftar di Kegiatan Ini
+                      </p>
+                      <p className="text-amber-800 text-[11px] mt-0.5 leading-relaxed">
+                        Anda harus terdaftar terlebih dahulu untuk mengisi presensi dan menerbitkan sertifikat resmi kegiatan ini.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="pt-2 border-t border-amber-200/80 flex items-center gap-2.5 flex-wrap">
+                    <a
+                      href={`/pendaftaran?workshop=${currentSelectedWs?.id || form.workshop_id}`}
+                      className="px-4 py-2 rounded-xl bg-purple-700 hover:bg-purple-800 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition-colors"
+                    >
+                      <span>Daftar Workshop Sekarang (Hanya 30 Detik)</span>
+                      <span>&rarr;</span>
+                    </a>
+                  </div>
+                </motion.div>
+              )}
+
+              <div className="flex items-center justify-between text-[11px] text-slate-500 px-1 pt-1">
+                <span className="flex items-center gap-1">
+                  <Sparkles size={12} className="text-purple-600" />
+                  Praktis: Cukup ketik NIM atau NIP Anda. Sistem akan memuat nama, email, dan instansi secara otomatis.
+                </span>
               </div>
             </div>
-
-            {/* NIM / No Identitas */}
-            <div className="space-y-1.5">
-              <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wider">
-                NIM / Nomor Identitas <span className="text-rose-500">*</span>
-              </label>
-              <div className="relative">
-                <Hash size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-purple-600 pointer-events-none" />
-                <input
-                  type="text"
-                  value={form.identitas}
-                  onChange={e => set('identitas', e.target.value.toUpperCase())}
-                  placeholder="Contoh: 20400121045"
-                  required
-                  className="w-full pl-11 pr-4 py-3 rounded-2xl border-2 border-slate-200/90 bg-white/90 text-sm text-slate-900 placeholder:text-slate-400 font-medium focus:border-purple-600 focus:ring-4 focus:ring-purple-500/10 focus:outline-none transition-all shadow-xs"
-                />
-              </div>
-            </div>
-
-            {/* Institusi / Kampus */}
-            <div className="space-y-1.5">
-              <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wider">
-                Institusi / Perguruan Tinggi <span className="text-rose-500">*</span>
-              </label>
-              <div className="relative">
-                <Building size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-purple-600 pointer-events-none" />
-                <input
-                  type="text"
-                  value={form.instansi}
-                  onChange={e => set('instansi', e.target.value)}
-                  placeholder="Contoh: UIN Alauddin Makassar"
-                  required
-                  className="w-full pl-11 pr-4 py-3 rounded-2xl border-2 border-slate-200/90 bg-white/90 text-sm text-slate-900 placeholder:text-slate-400 font-medium focus:border-purple-600 focus:ring-4 focus:ring-purple-500/10 focus:outline-none transition-all shadow-xs"
-                />
-              </div>
-
-            </div>
-
-            {/* Alamat Email */}
-            <div className="space-y-1.5">
-              <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wider">
-                Alamat Email Aktif <span className="text-rose-500">*</span>
-              </label>
-              <div className="relative">
-                <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-purple-600 pointer-events-none" />
-                <input
-                  type="email"
-                  value={form.email}
-                  onChange={e => set('email', e.target.value)}
-                  placeholder="nama@email.com"
-                  required
-                  className="w-full pl-11 pr-4 py-3 rounded-2xl border-2 border-slate-200/90 bg-white/90 text-sm text-slate-900 placeholder:text-slate-400 font-medium focus:border-purple-600 focus:ring-4 focus:ring-purple-500/10 focus:outline-none transition-all shadow-xs"
-                />
-              </div>
-            </div>
-
-            {/* Nomor WhatsApp */}
-            <div className="space-y-1.5">
-              <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wider">
-                Nomor WhatsApp <span className="text-rose-500">*</span>
-              </label>
-              <div className="relative">
-                <Phone size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-purple-600 pointer-events-none" />
-                <input
-                  type="tel"
-                  value={form.whatsapp}
-                  onChange={e => handleWhatsAppInput(e.target.value)}
-                  placeholder="08xxxxxxxxxx"
-                  required
-                  className="w-full pl-11 pr-4 py-3 rounded-2xl border-2 border-slate-200/90 bg-white/90 text-sm text-slate-900 placeholder:text-slate-400 font-medium focus:border-purple-600 focus:ring-4 focus:ring-purple-500/10 focus:outline-none transition-all shadow-xs"
-                />
-              </div>
-            </div>
-          </div>
+          )}
         </div>
 
         {/* ============================================================ */}
@@ -1545,8 +1626,8 @@ function AttendanceForm({ workshops, selectedWorkshop, onGoToCek }) {
               onDrop={handleDrop}
               onClick={() => fileInputRef.current?.click()}
               className={`relative cursor-pointer rounded-2xl border-2 border-dashed p-6 sm:p-8 text-center transition-all duration-200 flex flex-col items-center justify-center gap-3 ${isDragging
-                  ? 'border-purple-600 bg-purple-100/60 scale-[1.01]'
-                  : 'border-purple-300/80 bg-purple-50/40 hover:bg-purple-50 hover:border-purple-500'
+                ? 'border-purple-600 bg-purple-100/60 scale-[1.01]'
+                : 'border-purple-300/80 bg-purple-50/40 hover:bg-purple-50 hover:border-purple-500'
                 }`}
             >
               <input
@@ -1942,15 +2023,15 @@ export default function PresensiPage() {
           </SectionReveal>
 
           {/* Tab Switcher Pills */}
-          <div id="presensi-section" className="flex justify-center mb-8 px-2">
-            <div className="bg-white/80 backdrop-blur-xl border border-purple-200/80 rounded-full p-1.5 flex gap-1 shadow-sm max-w-full overflow-x-auto no-scrollbar">
+          <div id="presensi-section" className="flex items-center justify-center mb-8 px-2">
+            <div className="bg-white/80 backdrop-blur-xl border border-purple-200/80 rounded-full p-1.5 inline-flex items-center justify-center gap-1.5 shadow-sm max-w-full overflow-x-auto no-scrollbar mx-auto">
               {TABS.map(({ id, label, icon: Icon }) => (
                 <button
                   key={id}
                   onClick={() => { playClick(); setActiveTab(id); }}
-                  className={`px-4 sm:px-5 py-2.5 rounded-full text-xs sm:text-sm font-bold flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap shrink-0 ${activeTab === id
-                      ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md shadow-purple-600/30'
-                      : 'text-slate-600 hover:text-purple-900 hover:bg-purple-50'
+                  className={`px-4 sm:px-5 py-2.5 rounded-full text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer whitespace-nowrap shrink-0 ${activeTab === id
+                    ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md shadow-purple-600/30'
+                    : 'text-slate-600 hover:text-purple-900 hover:bg-purple-50'
                     }`}
                 >
                   <Icon size={14} />
@@ -1980,7 +2061,7 @@ export default function PresensiPage() {
                         Formulir Presensi Workshop
                       </h2>
                       <p className="text-xs text-purple-700 font-semibold">
-                        Lengkapi 4 langkah data di bawah ini untuk menerbitkan sertifikat resmi Anda
+                        Verifikasi presensi kilat via NIM / NIP &amp; lampirkan bukti kehadiran untuk menerbitkan sertifikat resmi Anda
                       </p>
                     </div>
                   </div>
@@ -2004,7 +2085,7 @@ export default function PresensiPage() {
                         Cari & Ambil E-Sertifikat
                       </h2>
                       <p className="text-xs text-purple-700 font-semibold">
-                        Ketik nama atau NIM Anda untuk mengambil e-sertifikat resmi Anda
+                        Ketik nama atau NIM/NIP  untuk mengambil e-sertifikat resmi Anda
                       </p>
                     </div>
                   </div>

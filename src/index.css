@@ -88,6 +88,18 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Accessibility & Device Optimization: Skip heavy animations on low-power or reduce-motion devices */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001s !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 /* Universal media containment: images, canvas, iframes must NEVER exceed card width without breaking utility classes */
 @layer base {
   img,

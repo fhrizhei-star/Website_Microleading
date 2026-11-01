@@ -1,55 +1,42 @@
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useLocation } from 'react-router-dom';
 
 /**
- * PageTransition with rich Purple Color Curtain & Smooth Fade.
- * Every time a user changes pages, a modern purple gradient curtain
- * sweeps across the screen to create a stunning color transition effect.
+ * PageTransition with sleek non-blocking Laser Line & Safe Content Reveal.
+ * 
+ * NOTE (Blank Screen Fix):
+ * Sebelumnya terdapat curtain full-screen z-[9999] dengan `scaleY: 1` dan children `opacity: 0`.
+ * Pada HP dengan RAM terbatas, mode hemat baterai (Battery Saver), atau fitur "Hapus Animasi"
+ * (Reduce Motion) aktif di Android, animasi GPU sering kali terhenti/diabaikan,
+ * sehingga curtain gelap tersebut macet menutupi seluruh layar (layar blank hitam).
+ * 
+ * Solusi:
+ * 1. Curtain gelap full-screen dihilangkan sepenuhnya.
+ * 2. Menggunakan Top Glowing Laser Shimmer bar tipis (h-1) yang non-blocking dan elegan.
+ * 3. Halaman utama selalu terlihat secara default (failsafe) dengan transisi fade yang halus.
  */
 export default function PageTransition({ children }) {
   const location = useLocation();
 
   return (
     <div className="relative w-full">
-      {/* 1. Purple Color Transition Curtain */}
-      <motion.div
-        key={`curtain-${location.pathname}`}
-        className="fixed inset-0 z-[9999] pointer-events-none bg-gradient-to-br from-purple-800 via-violet-900 to-indigo-950 shadow-2xl flex items-center justify-center"
-        initial={{ scaleY: 1, transformOrigin: 'top' }}
-        animate={{ scaleY: 0, transformOrigin: 'top' }}
-        exit={{ scaleY: 1, transformOrigin: 'bottom' }}
-        transition={{ duration: 0.42, ease: [0.76, 0, 0.24, 1] }}
-      >
-        {/* Subtle center crest indicator */}
-        <motion.div
-          initial={{ opacity: 1, scale: 1 }}
-          animate={{ opacity: 0, scale: 0.9 }}
-          transition={{ duration: 0.25, ease: 'easeOut' }}
-          className="flex items-center gap-2.5 px-4 py-2 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 shadow-xl"
-        >
-          <img src="/img/1.png" alt="" className="w-6 h-6 object-contain" />
-          <span className="text-white font-display font-bold text-xs tracking-wide">
-            Laboratorium MPI
-          </span>
-        </motion.div>
-      </motion.div>
-
-      {/* 2. Top Glowing Shimmer Laser Line */}
+      {/* 1. Top Glowing Shimmer Laser Line (Non-blocking, slim indicator) */}
       <motion.div
         key={`laser-${location.pathname}`}
-        className="fixed inset-x-0 top-0 h-1 z-[10000] pointer-events-none bg-gradient-to-r from-purple-400 via-fuchsia-400 to-indigo-400 shadow-[0_0_20px_rgba(192,132,252,0.9)]"
-        initial={{ scaleX: 1, opacity: 1 }}
+        className="fixed inset-x-0 top-0 h-1 z-50 pointer-events-none bg-gradient-to-r from-purple-500 via-violet-500 to-indigo-500 shadow-[0_0_12px_rgba(168,85,247,0.7)]"
+        initial={{ scaleX: 1, opacity: 0.9 }}
         animate={{ scaleX: 0, opacity: 0 }}
-        transition={{ duration: 0.5, ease: 'easeInOut' }}
+        transition={{ duration: 0.45, ease: 'easeOut' }}
         style={{ transformOrigin: 'right' }}
       />
 
-      {/* 3. Main Page Content with smooth upward reveal */}
+      {/* 2. Main Page Content with safe reveal (never hides completely if animation stalls) */}
       <motion.div
-        initial={{ opacity: 0, y: 16 }}
+        key={`page-${location.pathname}`}
+        initial={{ opacity: 0.7, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -12 }}
-        transition={{ duration: 0.35, delay: 0.08, ease: [0.16, 1, 0.3, 1] }}
+        transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+        className="w-full"
       >
         {children}
       </motion.div>
@@ -64,10 +51,10 @@ export function SectionReveal({ children, delay = 0, className = '' }) {
   return (
     <motion.div
       className={className}
-      initial={{ opacity: 0, y: 28 }}
+      initial={{ opacity: 0.5, y: 16 }}
       whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: '-50px' }}
-      transition={{ duration: 0.5, delay, ease: [0.16, 1, 0.3, 1] }}
+      viewport={{ once: true, margin: '0px' }}
+      transition={{ duration: 0.4, delay, ease: [0.16, 1, 0.3, 1] }}
     >
       {children}
     </motion.div>
@@ -83,7 +70,7 @@ export function StaggerContainer({ children, className = '', staggerDelay = 0.08
       className={className}
       initial="hidden"
       whileInView="visible"
-      viewport={{ once: true, margin: '-40px' }}
+      viewport={{ once: true, margin: '0px' }}
       variants={{
         hidden: {},
         visible: { transition: { staggerChildren: staggerDelay } },
@@ -102,8 +89,8 @@ export function StaggerItem({ children, className = '' }) {
     <motion.div
       className={className}
       variants={{
-        hidden: { opacity: 0, y: 20, scale: 0.98 },
-        visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] } },
+        hidden: { opacity: 0.6, y: 12 },
+        visible: { opacity: 1, y: 0, transition: { duration: 0.35, ease: [0.16, 1, 0.3, 1] } },
       }}
     >
       {children}
@@ -118,10 +105,10 @@ export function PurpleFadeIn({ children, delay = 0, className = '' }) {
   return (
     <motion.div
       className={className}
-      initial={{ opacity: 0, y: 18 }}
+      initial={{ opacity: 0.6, y: 12 }}
       whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: '-40px' }}
-      transition={{ duration: 0.55, delay, ease: [0.16, 1, 0.3, 1] }}
+      viewport={{ once: true, margin: '0px' }}
+      transition={{ duration: 0.45, delay, ease: [0.16, 1, 0.3, 1] }}
     >
       {children}
     </motion.div>

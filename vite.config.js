@@ -8,4 +8,8 @@ export default defineConfig({
     tailwindcss(),
     react(),
   ],
+  build: {
+    target: 'es2020',
+    cssTarget: 'chrome80',
+  },
 })

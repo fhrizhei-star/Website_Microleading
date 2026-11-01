@@ -38,6 +38,20 @@
   --radius-2xl: 1rem;
   --radius-3xl: 1.5rem;
   --radius-4xl: 2rem;
+
+  /* === 12 Kategori Perangkat Viewport Breakpoints === */
+  --breakpoint-xs: 20rem;           /* Tier 1: 320px - Ponsel sangat kecil */
+  --breakpoint-phone-sm: 22.5rem;   /* Tier 2: 360px - Ponsel kecil */
+  --breakpoint-phone: 24.375rem;    /* Tier 3: 390px - Ponsel standar */
+  --breakpoint-phone-lg: 26.875rem; /* Tier 4: 430px - Ponsel besar */
+  --breakpoint-sm: 36rem;           /* Tier 5: 576px - Ponsel landscape / perangkat kecil */
+  --breakpoint-md: 48rem;           /* Tier 6: 768px - Tablet kecil */
+  --breakpoint-tab: 51.25rem;       /* Tier 7: 820px - Tablet standar */
+  --breakpoint-lg: 62rem;           /* Tier 8: 992px - Tablet besar / laptop kecil */
+  --breakpoint-xl: 75rem;           /* Tier 9: 1200px - Laptop standar */
+  --breakpoint-2xl: 87.5rem;        /* Tier 10: 1400px - Laptop lebar */
+  --breakpoint-3xl: 100rem;         /* Tier 11: 1600px - Desktop besar */
+  --breakpoint-4xl: 120rem;         /* Tier 12: 1920px - Monitor Full HD ke atas */
 }
 
 /* === Base Styles & Universal Responsive Containment === */
